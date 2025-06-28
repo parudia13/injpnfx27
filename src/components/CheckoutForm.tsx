@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -13,7 +13,6 @@ import { CartItem, Order } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { useCreateOrder } from '@/hooks/useOrders';
 import { useAuth } from '@/hooks/useFirebaseAuth';
-import InvoiceModal from '@/components/InvoiceModal';
 import { useShippingRateByPrefecture } from '@/hooks/useShippingRates';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import PaymentMethodInfo from '@/components/PaymentMethodInfo';
@@ -42,8 +41,6 @@ interface CheckoutFormProps {
 
 const CheckoutForm = ({ cart, total, onOrderComplete }: CheckoutFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showInvoice, setShowInvoice] = useState(false);
-  const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
   const { user } = useAuth();
   const createOrder = useCreateOrder();
   const [selectedPrefecture, setSelectedPrefecture] = useState<string>('');
@@ -251,53 +248,21 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
         }
       }
 
-      // Create order object for invoice
-      const newOrder: Order = {
-        id: orderId,
-        user_id: user?.uid || '',
-        items: orderData.items,
-        total_price: orderData.totalPrice,
-        customer_info: orderData.customerInfo,
-        status: 'pending',
-        payment_status: 'pending',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        total_amount: orderData.totalPrice,
-        shipping_address: {
-          name: data.fullName,
-          address: data.address,
-          city: data.city,
-          state: data.prefecture,
-          zip: data.postalCode,
-          country: 'Japan'
-        },
-        payment_method: data.paymentMethod as 'credit_card' | 'paypal' | 'cod',
-        shipping_fee: shippingFee || 0,
-        payment_proof_url: paymentProofUrl
-      };
-
-      setCreatedOrder(newOrder);
-      
       // Show success message
       toast({
         title: "Pesanan Berhasil Dibuat",
         description: "Pesanan telah disimpan di riwayat Anda. Silakan lanjutkan ke WhatsApp untuk konfirmasi.",
       });
-
-      // Show invoice first
-      setShowInvoice(true);
       
-      // Open WhatsApp after a short delay
-      setTimeout(() => {
-        const whatsappMessage = generateWhatsAppMessage(data, convertedRupiah);
-        const phoneNumber = '+817084894699'; // Replace with your actual WhatsApp number
-        const whatsappUrl = `https://wa.me/${phoneNumber}?text=${whatsappMessage}`;
-        window.open(whatsappUrl, '_blank');
-        
-        // Clear form and cart
-        form.reset();
-        onOrderComplete();
-      }, 1000);
+      // Open WhatsApp immediately
+      const whatsappMessage = generateWhatsAppMessage(data, convertedRupiah);
+      const phoneNumber = '+817084894699'; // Replace with your actual WhatsApp number
+      const whatsappUrl = `https://wa.me/${phoneNumber}?text=${whatsappMessage}`;
+      window.open(whatsappUrl, '_blank');
+      
+      // Clear form and cart
+      form.reset();
+      onOrderComplete();
       
     } catch (error) {
       console.error('Error creating order:', error);
@@ -587,15 +552,6 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
           </div>
         </form>
       </Form>
-
-      {/* Invoice Modal */}
-      {showInvoice && createdOrder && (
-        <InvoiceModal
-          isOpen={showInvoice}
-          onClose={() => setShowInvoice(false)}
-          order={createdOrder}
-        />
-      )}
     </div>
   );
 };
