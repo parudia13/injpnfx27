@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { MessageCircle, FileText } from 'lucide-react';
+import { MessageCircle, FileText, CreditCard, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -381,44 +381,60 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
           />
 
           {/* Payment Method Selection */}
-          <FormField
-            control={form.control}
-            name="paymentMethod"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Pilih Metode Pembayaran *</FormLabel>
-                <Select 
-                  onValueChange={(value) => {
-                    field.onChange(value);
-                    setSelectedPaymentMethod(value);
-                  }}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger className="bg-white">
-                      <SelectValue placeholder="Pilih metode pembayaran" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent className="bg-white border shadow-lg z-50">
-                    <SelectItem value="COD (Cash on Delivery)">COD (Cash on Delivery)</SelectItem>
-                    <SelectItem value="Bank Transfer (Rupiah)">Bank Transfer (Rupiah)</SelectItem>
-                    <SelectItem value="Bank Transfer (Yucho / ゆうちょ銀行)">Bank Transfer (Yucho / ゆうちょ銀行)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-semibold mb-4 flex items-center">
+              <CreditCard className="w-5 h-5 mr-2 text-primary" />
+              Pilih Metode Pembayaran
+            </h3>
+            
+            <FormField
+              control={form.control}
+              name="paymentMethod"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Metode Pembayaran *</FormLabel>
+                  <Select 
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      setSelectedPaymentMethod(value);
+                    }}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="bg-white">
+                        <SelectValue placeholder="Pilih metode pembayaran" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent className="bg-white border shadow-lg z-50">
+                      <SelectItem value="COD (Cash on Delivery)">COD (Cash on Delivery)</SelectItem>
+                      <SelectItem value="Bank Transfer (Rupiah)">Bank Transfer (Rupiah)</SelectItem>
+                      <SelectItem value="Bank Transfer (Yucho / ゆうちょ銀行)">Bank Transfer (Yucho / ゆうちょ銀行)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
           {/* Bank Account Information - Conditionally displayed */}
           {selectedPaymentMethod === 'Bank Transfer (Rupiah)' && (
             <Card className="bg-blue-50 border-blue-200">
               <CardContent className="pt-4">
-                <h3 className="font-medium text-blue-800 mb-2">Informasi Rekening Bank</h3>
+                <h3 className="font-medium text-blue-800 mb-2 flex items-center">
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Informasi Rekening Bank
+                </h3>
                 <div className="space-y-1 text-blue-700">
                   <p><span className="font-semibold">Nama Penerima:</span> PT. Injapan Shop</p>
                   <p><span className="font-semibold">Nomor Rekening:</span> 1234567890 (BCA)</p>
                 </div>
+                <Alert className="mt-3 bg-yellow-50 border-yellow-200">
+                  <AlertTriangle className="h-4 w-4 text-yellow-800" />
+                  <AlertDescription className="text-yellow-800 text-sm">
+                    Harap transfer sesuai dengan total belanja dan simpan bukti transfer
+                  </AlertDescription>
+                </Alert>
               </CardContent>
             </Card>
           )}
@@ -426,11 +442,20 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
           {selectedPaymentMethod === 'Bank Transfer (Yucho / ゆうちょ銀行)' && (
             <Card className="bg-blue-50 border-blue-200">
               <CardContent className="pt-4">
-                <h3 className="font-medium text-blue-800 mb-2">Informasi Rekening Bank</h3>
+                <h3 className="font-medium text-blue-800 mb-2 flex items-center">
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Informasi Rekening Bank
+                </h3>
                 <div className="space-y-1 text-blue-700">
                   <p><span className="font-semibold">Nama Penerima:</span> イジャパンショップ</p>
                   <p><span className="font-semibold">Nomor Rekening:</span> 9876543210</p>
                 </div>
+                <Alert className="mt-3 bg-yellow-50 border-yellow-200">
+                  <AlertTriangle className="h-4 w-4 text-yellow-800" />
+                  <AlertDescription className="text-yellow-800 text-sm">
+                    Harap transfer sesuai dengan total belanja dan simpan bukti transfer
+                  </AlertDescription>
+                </Alert>
               </CardContent>
             </Card>
           )}
@@ -466,7 +491,7 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
           <div className="pt-4 border-t">
             <Button
               type="submit"
-              disabled={isSubmitting || cart.length === 0 || (selectedPrefecture && shippingFee === null)}
+              disabled={isSubmitting || cart.length === 0 || (selectedPrefecture && shippingFee === null) || !selectedPaymentMethod}
               className="w-full bg-green-600 hover:bg-green-700 text-white py-3 text-lg font-semibold flex items-center justify-center space-x-2"
             >
               <MessageCircle className="w-5 h-5" />
@@ -482,6 +507,14 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
               <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-sm text-yellow-700">
                   Ongkir untuk prefektur ini belum diatur. Silakan pilih prefektur lain atau hubungi admin.
+                </p>
+              </div>
+            )}
+            
+            {!selectedPaymentMethod && (
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-700">
+                  Silakan pilih metode pembayaran untuk melanjutkan.
                 </p>
               </div>
             )}
