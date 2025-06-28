@@ -55,10 +55,10 @@ const UserMenu = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 cursor-pointer">
           <User className="w-4 h-4" />
           <span className="hidden md:inline">{user.email}</span>
-        </Button>
+        </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>

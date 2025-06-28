@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useLanguage } from '@/hooks/useLanguage';
 import { Button } from '@/components/ui/button';
@@ -16,19 +15,17 @@ const LanguageSwitcher = () => {
 
   return (
     <div className="relative">
-      <Button
-        variant="ghost"
-        size="sm"
+      <div
         onClick={() => setIsOpen(!isOpen)}
-        className="p-2 hover:bg-gray-100 rounded-full"
+        className="p-2 hover:bg-gray-100 rounded-full cursor-pointer"
       >
         <span className="text-xl">{currentLanguage?.flag}</span>
-      </Button>
+      </div>
 
       {isOpen && (
         <div className="absolute right-0 mt-2 w-32 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
           {languages.map((lang) => (
-            <button
+            <div
               key={lang.code}
               onClick={() => {
                 setLanguage(lang.code as 'id' | 'en');
@@ -36,11 +33,11 @@ const LanguageSwitcher = () => {
               }}
               className={`w-full px-3 py-2 text-left hover:bg-gray-50 flex items-center space-x-2 first:rounded-t-lg last:rounded-b-lg ${
                 language === lang.code ? 'bg-gray-50 font-medium' : ''
-              }`}
+              } cursor-pointer`}
             >
               <span className="text-lg">{lang.flag}</span>
               <span className="text-sm">{lang.code.toUpperCase()}</span>
-            </button>
+            </div>
           ))}
         </div>
       )}
