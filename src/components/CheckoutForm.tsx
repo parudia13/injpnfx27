@@ -273,7 +273,7 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
                   <Select 
                     onValueChange={(value) => {
                       field.onChange(value);
-                      setSelectedPrefecture(value);
+                      setSelectedPrefecture(value.toLowerCase());
                     }} 
                     defaultValue={field.value}
                   >
@@ -402,7 +402,7 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
             {selectedPrefecture && shippingFee === null && (
               <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-sm text-yellow-700">
-                  Ongkir untuk prefektur {selectedPrefecture} belum diatur. Silakan pilih prefektur lain atau hubungi admin.
+                  Ongkir untuk prefektur ini belum diatur. Silakan pilih prefektur lain atau hubungi admin.
                 </p>
               </div>
             )}

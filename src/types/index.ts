@@ -107,7 +107,7 @@ export interface RecycleBinItem {
   deleted_at: string;
 }
 
-// Missing CartItem interface
+// CartItem interface
 export interface CartItem {
   id: string;
   name: string;
@@ -119,7 +119,7 @@ export interface CartItem {
   selectedVariantName?: string | null;
 }
 
-// Missing DashboardStats interface
+// DashboardStats interface
 export interface DashboardStats {
   totalProducts: number;
   activeProducts: number;

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useShippingRates, useAddShippingRate, useUpdateShippingRate, useDeleteShippingRate } from '@/hooks/useShippingRates';
+import { prefectures } from '@/data/prefectures';
 import { toast } from '@/hooks/use-toast';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,57 +38,6 @@ import { Truck, Edit, Trash2, Search, RefreshCw } from 'lucide-react';
 import { ShippingRate } from '@/types';
 import { collection, getDocs, setDoc, doc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
-
-// Define the prefectures of Japan
-const japanPrefectures = [
-  { id: 'hokkaido', kanji: '北海道', romaji: 'Hokkaido' },
-  { id: 'aomori', kanji: '青森県', romaji: 'Aomori' },
-  { id: 'iwate', kanji: '岩手県', romaji: 'Iwate' },
-  { id: 'miyagi', kanji: '宮城県', romaji: 'Miyagi' },
-  { id: 'akita', kanji: '秋田県', romaji: 'Akita' },
-  { id: 'yamagata', kanji: '山形県', romaji: 'Yamagata' },
-  { id: 'fukushima', kanji: '福島県', romaji: 'Fukushima' },
-  { id: 'ibaraki', kanji: '茨城県', romaji: 'Ibaraki' },
-  { id: 'tochigi', kanji: '栃木県', romaji: 'Tochigi' },
-  { id: 'gunma', kanji: '群馬県', romaji: 'Gunma' },
-  { id: 'saitama', kanji: '埼玉県', romaji: 'Saitama' },
-  { id: 'chiba', kanji: '千葉県', romaji: 'Chiba' },
-  { id: 'tokyo', kanji: '東京都', romaji: 'Tokyo' },
-  { id: 'kanagawa', kanji: '神奈川県', romaji: 'Kanagawa' },
-  { id: 'niigata', kanji: '新潟県', romaji: 'Niigata' },
-  { id: 'toyama', kanji: '富山県', romaji: 'Toyama' },
-  { id: 'ishikawa', kanji: '石川県', romaji: 'Ishikawa' },
-  { id: 'fukui', kanji: '福井県', romaji: 'Fukui' },
-  { id: 'yamanashi', kanji: '山梨県', romaji: 'Yamanashi' },
-  { id: 'nagano', kanji: '長野県', romaji: 'Nagano' },
-  { id: 'gifu', kanji: '岐阜県', romaji: 'Gifu' },
-  { id: 'shizuoka', kanji: '静岡県', romaji: 'Shizuoka' },
-  { id: 'aichi', kanji: '愛知県', romaji: 'Aichi' },
-  { id: 'mie', kanji: '三重県', romaji: 'Mie' },
-  { id: 'shiga', kanji: '滋賀県', romaji: 'Shiga' },
-  { id: 'kyoto', kanji: '京都府', romaji: 'Kyoto' },
-  { id: 'osaka', kanji: '大阪府', romaji: 'Osaka' },
-  { id: 'hyogo', kanji: '兵庫県', romaji: 'Hyogo' },
-  { id: 'nara', kanji: '奈良県', romaji: 'Nara' },
-  { id: 'wakayama', kanji: '和歌山県', romaji: 'Wakayama' },
-  { id: 'tottori', kanji: '鳥取県', romaji: 'Tottori' },
-  { id: 'shimane', kanji: '島根県', romaji: 'Shimane' },
-  { id: 'okayama', kanji: '岡山県', romaji: 'Okayama' },
-  { id: 'hiroshima', kanji: '広島県', romaji: 'Hiroshima' },
-  { id: 'yamaguchi', kanji: '山口県', romaji: 'Yamaguchi' },
-  { id: 'tokushima', kanji: '徳島県', romaji: 'Tokushima' },
-  { id: 'kagawa', kanji: '香川県', romaji: 'Kagawa' },
-  { id: 'ehime', kanji: '愛媛県', romaji: 'Ehime' },
-  { id: 'kochi', kanji: '高知県', romaji: 'Kochi' },
-  { id: 'fukuoka', kanji: '福岡県', romaji: 'Fukuoka' },
-  { id: 'saga', kanji: '佐賀県', romaji: 'Saga' },
-  { id: 'nagasaki', kanji: '長崎県', romaji: 'Nagasaki' },
-  { id: 'kumamoto', kanji: '熊本県', romaji: 'Kumamoto' },
-  { id: 'oita', kanji: '大分県', romaji: 'Oita' },
-  { id: 'miyazaki', kanji: '宮崎県', romaji: 'Miyazaki' },
-  { id: 'kagoshima', kanji: '鹿児島県', romaji: 'Kagoshima' },
-  { id: 'okinawa', kanji: '沖縄県', romaji: 'Okinawa' }
-];
 
 const ShippingRates = () => {
   const { data: shippingRates = [], isLoading, refetch } = useShippingRates();
@@ -149,12 +99,13 @@ const ShippingRates = () => {
       // Initialize rates for all prefectures
       const timestamp = new Date().toISOString();
       
-      for (const prefecture of japanPrefectures) {
-        const docRef = doc(db, 'shipping_rates', prefecture.id);
+      for (const prefecture of prefectures) {
+        const prefectureId = prefecture.name_en.toLowerCase();
+        const docRef = doc(db, 'shipping_rates', prefectureId);
         await setDoc(docRef, {
-          prefecture_id: prefecture.id,
-          kanji: prefecture.kanji,
-          romaji: prefecture.romaji,
+          prefecture_id: prefectureId,
+          kanji: prefecture.name,
+          romaji: prefecture.name_en,
           price: 0,
           delivery_time: "-",
           created_at: timestamp,
