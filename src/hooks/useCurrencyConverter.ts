@@ -22,7 +22,8 @@ export const useCurrencyConverter = (yenAmount: number, paymentMethod: string) =
       const response = await fetch('https://api.exchangerate.host/latest?base=JPY&symbols=IDR');
       
       if (!response.ok) {
-        throw new Error('Primary API failed');
+        console.warn('Primary API response not OK, trying backup API');
+        throw new Error('Primary API response not OK');
       }
       
       const data = await response.json();
@@ -35,17 +36,19 @@ export const useCurrencyConverter = (yenAmount: number, paymentMethod: string) =
         setLastFetchTime(Date.now());
         setIsLoading(false);
       } else {
-        throw new Error('Failed to get exchange rate from primary API');
+        console.warn('Primary API missing rate data, trying backup API');
+        throw new Error('Primary API missing rate data');
       }
     } catch (primaryError) {
-      console.warn('Primary API warning:', primaryError);
+      // Only log a warning for primary API failure, not an error
+      console.warn('Primary API failed, trying backup API:', primaryError);
       
       try {
         // Try backup API if primary fails
         const backupResponse = await fetch('https://open.er-api.com/v6/latest/JPY');
         
         if (!backupResponse.ok) {
-          throw new Error('Backup API failed');
+          throw new Error('Backup API response not OK');
         }
         
         const backupData = await backupResponse.json();
@@ -61,7 +64,11 @@ export const useCurrencyConverter = (yenAmount: number, paymentMethod: string) =
           throw new Error('Invalid data from backup API');
         }
       } catch (backupError) {
-        console.error('Both APIs failed - Primary error:', primaryError, 'Backup error:', backupError);
+        // Now log a real error since both APIs failed
+        console.error('Currency conversion failed - Both APIs failed:', {
+          primaryError,
+          backupError
+        });
         
         // Use fallback rate if both APIs fail
         setError('Failed to get exchange rate. Using fallback rate.');
