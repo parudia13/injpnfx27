@@ -111,7 +111,7 @@ const HowToBuy = () => {
             
             <div className="bg-white p-6 rounded-lg shadow-md">
               <h3 className="font-semibold text-lg mb-2">📞 Bagaimana cara menghubungi customer service?</h3>
-              <p className="text-gray-600">Kamu bisa menghubungi kami melalui WhatsApp di +62 851-5545-2259. Tim kami siap membantu 24/7!</p>
+              <p className="text-gray-600">Kamu bisa menghubungi kami melalui WhatsApp di +817084894699. Tim kami siap membantu 24/7!</p>
             </div>
           </div>
         </div>
@@ -128,7 +128,7 @@ const HowToBuy = () => {
               🛒 Belanja Sekarang
             </Link>
             <a
-              href="https://wa.me/6285155452259"
+              href="https://wa.me/817084894699"
               target="_blank"
               rel="noopener noreferrer"
               className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-200 transform hover:scale-105"
