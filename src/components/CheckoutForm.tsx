@@ -194,7 +194,7 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
       // Open WhatsApp after a short delay
       setTimeout(() => {
         const whatsappMessage = generateWhatsAppMessage(data);
-        const phoneNumber = '6285155452259'; // Replace with your actual WhatsApp number
+        const phoneNumber = '+817084894699'; // Replace with your actual WhatsApp number
         const whatsappUrl = `https://wa.me/${phoneNumber}?text=${whatsappMessage}`;
         window.open(whatsappUrl, '_blank');
       }, 1000);
