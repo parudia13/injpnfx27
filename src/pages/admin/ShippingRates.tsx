@@ -145,7 +145,7 @@ const ShippingRates = () => {
 
   const filteredRates = shippingRates.filter(rate => 
     rate.kanji.includes(searchTerm) || 
-    japanPrefectures.find(p => p.id === rate.prefecture_id)?.romaji.toLowerCase().includes(searchTerm.toLowerCase())
+    (japanPrefectures.find(p => p.id === rate.prefecture_id)?.romaji || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getAvailablePrefectures = () => {
