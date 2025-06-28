@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LogIn } from 'lucide-react';
+import { LogIn, Download } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useFirebaseAuth';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -8,6 +8,7 @@ import UserMenu from '@/components/UserMenu';
 import CartIcon from '@/components/CartIcon';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { Button } from '@/components/ui/button';
+import { usePWAInstall } from '@/hooks/usePWAInstall';
 
 interface HeaderProps {
   shouldAnimateCart?: boolean;
@@ -19,6 +20,13 @@ const Header = ({ shouldAnimateCart = false }: HeaderProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { t } = useLanguage();
+  const { 
+    isInstallable, 
+    isIOSDevice, 
+    showIOSInstructions, 
+    setShowIOSInstructions,
+    handleInstallClick 
+  } = usePWAInstall();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -78,6 +86,17 @@ const Header = ({ shouldAnimateCart = false }: HeaderProps) => {
                 {item.label}
               </div>
             ))}
+            
+            {/* PWA Install Button for Desktop */}
+            {(isInstallable || isIOSDevice) && (
+              <div
+                onClick={handleInstallClick}
+                className="font-medium text-gray-700 hover:text-primary transition-colors duration-200 cursor-pointer flex items-center"
+              >
+                <Download className="w-4 h-4 mr-1" />
+                <span>⬇️ Download Aplikasi</span>
+              </div>
+            )}
           </nav>
 
           {/* Right side - Language, Cart, Auth, Mobile Menu */}
@@ -158,10 +177,40 @@ const Header = ({ shouldAnimateCart = false }: HeaderProps) => {
                   {t('nav.login')} / {t('nav.register')}
                 </div>
               )}
+              
+              {/* PWA Install Button for Mobile */}
+              {(isInstallable || isIOSDevice) && (
+                <div
+                  onClick={handleInstallClick}
+                  className="text-gray-700 hover:text-primary font-medium text-left cursor-pointer flex items-center"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  <span>⬇️ Download Aplikasi</span>
+                </div>
+              )}
             </nav>
           </div>
         )}
       </div>
+      
+      {/* iOS Installation Instructions Modal */}
+      {showIOSInstructions && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm">
+            <h3 className="text-lg font-bold mb-3">Instalasi di iOS:</h3>
+            <ol className="list-decimal pl-5 mb-4 space-y-2">
+              <li>Tap ikon "Share" (kotak dengan panah ke atas) di browser</li>
+              <li>Scroll dan pilih "Add to Home Screen"</li>
+              <li>Tap "Add" di pojok kanan atas</li>
+            </ol>
+            <div className="flex justify-end">
+              <Button onClick={() => setShowIOSInstructions(false)}>
+                Tutup
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 };
