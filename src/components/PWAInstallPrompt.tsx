@@ -15,6 +15,13 @@ const PWAInstallPrompt = () => {
   const [showPrompt, setShowPrompt] = useState(false);
   
   useEffect(() => {
+    // Check if user has previously dismissed the prompt
+    const hasDismissed = localStorage.getItem('pwa-prompt-dismissed') === 'true';
+    if (hasDismissed) {
+      setDismissed(true);
+      return;
+    }
+    
     // Only show the prompt after 5 seconds if the app is installable and not already installed
     if ((isInstallable || isIOSDevice) && !isStandalone && !dismissed) {
       const timer = setTimeout(() => {
@@ -25,6 +32,13 @@ const PWAInstallPrompt = () => {
     }
   }, [isInstallable, isIOSDevice, isStandalone, dismissed]);
   
+  const handleDismiss = () => {
+    setDismissed(true);
+    setShowPrompt(false);
+    // Save dismissal to localStorage
+    localStorage.setItem('pwa-prompt-dismissed', 'true');
+  };
+  
   if (!showPrompt || isStandalone || (!isInstallable && !isIOSDevice) || dismissed) {
     return null;
   }
@@ -32,7 +46,7 @@ const PWAInstallPrompt = () => {
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t border-gray-200 p-4 z-40 animate-fade-in">
       <button 
-        onClick={() => setDismissed(true)}
+        onClick={handleDismiss}
         className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
         aria-label="Close"
       >
