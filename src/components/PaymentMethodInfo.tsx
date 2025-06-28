@@ -54,6 +54,7 @@ const PaymentMethodInfo = ({ paymentMethod, totalAmount }: PaymentMethodInfoProp
                       onClick={handleRefreshRate}
                       className="ml-2 text-blue-500 hover:text-blue-700"
                       title="Refresh kurs"
+                      type="button"
                     >
                       <RefreshCw className={`w-4 h-4 ${showRefreshAnimation ? 'animate-spin' : ''}`} />
                     </button>
@@ -62,7 +63,7 @@ const PaymentMethodInfo = ({ paymentMethod, totalAmount }: PaymentMethodInfoProp
                 
                 {error ? (
                   <p className="text-xs text-yellow-600 mt-2">
-                    Failed to get exchange rate. Using fallback rate. Kurs yang ditampilkan adalah perkiraan.
+                    Gagal mendapatkan kurs terbaru. Menggunakan kurs perkiraan.
                   </p>
                 ) : (
                   <p className="text-xs text-blue-600 mt-1">
@@ -72,7 +73,7 @@ const PaymentMethodInfo = ({ paymentMethod, totalAmount }: PaymentMethodInfoProp
                 
                 <div className="mt-3 text-sm text-blue-600">
                   <p className="font-medium">Informasi Rekening:</p>
-                  <p>Bank: BNI</p>
+                  <p>Bank: BCA</p>
                   <p>No. Rekening: 1234567890</p>
                   <p>Atas Nama: PT. Injapan Shop</p>
                 </div>
