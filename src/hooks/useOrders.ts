@@ -7,8 +7,9 @@ export const useOrders = () => {
     queryKey: ['orders'],
     queryFn: getAllOrders,
     staleTime: 0, // Always consider data stale for real-time updates
-    refetchInterval: 2000, // Refetch every 2 seconds
-    refetchIntervalInBackground: true, // Continue refetching when tab is not active
+    // Remove the automatic refetching that's causing reloads
+    // refetchInterval: 2000, // Refetch every 2 seconds
+    // refetchIntervalInBackground: true, // Continue refetching when tab is not active
   });
 };
 
@@ -18,8 +19,9 @@ export const useUserOrders = (userId: string) => {
     queryFn: () => getOrdersByUser(userId),
     enabled: !!userId,
     staleTime: 0,
-    refetchInterval: 10000, // Refetch every 10 seconds for user orders (less frequent)
-    refetchIntervalInBackground: false, // Don't refetch in background for user orders
+    // Remove the automatic refetching that's causing reloads
+    // refetchInterval: 10000, // Refetch every 10 seconds for user orders (less frequent)
+    // refetchIntervalInBackground: false, // Don't refetch in background for user orders
     retry: 3, // Retry failed requests
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
   });

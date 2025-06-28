@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
-import { Search, Eye, CheckCircle, XCircle, Clock, Package, FileText } from 'lucide-react';
+import { Search, Eye, CheckCircle, XCircle, Clock, Package, FileText, RefreshCw } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import InvoiceModal from '@/components/InvoiceModal';
 import { Order } from '@/types';
@@ -23,6 +23,11 @@ const OrdersHistory = () => {
   const [showInvoice, setShowInvoice] = useState(false);
   const [invoiceOrder, setInvoiceOrder] = useState<Order | null>(null);
   const queryClient = useQueryClient();
+
+  // Add manual refresh function instead of relying on automatic refetching
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['orders'] });
+  };
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
@@ -112,9 +117,16 @@ const OrdersHistory = () => {
   return (
     <AdminLayout>
       <div className="p-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Riwayat Pesanan</h1>
-          <p className="text-gray-600">Kelola dan monitor semua pesanan dengan invoice otomatis</p>
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Riwayat Pesanan</h1>
+            <p className="text-gray-600">Kelola dan monitor semua pesanan dengan invoice otomatis</p>
+          </div>
+          
+          <Button onClick={handleRefresh} variant="outline" size="sm">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh Data
+          </Button>
         </div>
 
         {/* Filters */}

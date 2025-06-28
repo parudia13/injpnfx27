@@ -23,6 +23,11 @@ const OrderConfirmationPage = () => {
     setShowInvoice(true);
   };
 
+  // Add manual refresh function instead of relying on automatic refetching
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['pending-orders'] });
+  };
+
   if (isLoading) {
     return (
       <AdminLayout>
@@ -60,6 +65,10 @@ const OrderConfirmationPage = () => {
             </div>
             
             <div className="flex items-center space-x-4">
+              <Button onClick={handleRefresh} variant="outline" size="sm">
+                <Clock className="w-4 h-4 mr-2" />
+                Refresh Data
+              </Button>
               <Badge variant="secondary" className="text-sm">
                 <Clock className="w-4 h-4 mr-1" />
                 {pendingOrders.length} Pending

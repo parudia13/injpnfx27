@@ -7,22 +7,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ShoppingBag, Calendar, Package, FileText, Eye, AlertCircle, CreditCard, Upload } from 'lucide-react';
+import { ShoppingBag, Calendar, Package, FileText, Eye, AlertCircle, RefreshCw } from 'lucide-react';
 import { Order } from '@/types';
 import { Navigate } from 'react-router-dom';
 import { useState } from 'react';
-import OrderPaymentStatus from '@/components/OrderPaymentStatus';
-import PaymentProofUploader from '@/components/PaymentProofUploader';
+import { useQueryClient } from '@tanstack/react-query';
 
 const Orders = () => {
   const { user, loading: authLoading } = useAuth();
-  const { data: orders, isLoading, error, refetch } = useUserOrders(user?.uid || '');
+  const { data: orders, isLoading, error } = useUserOrders(user?.uid || '');
   const [showInvoice, setShowInvoice] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [showPaymentProof, setShowPaymentProof] = useState(false);
-  const [selectedPaymentProof, setSelectedPaymentProof] = useState<string | null>(null);
-  const [showPaymentUploader, setShowPaymentUploader] = useState(false);
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  // Add manual refresh function instead of relying on automatic refetching
+  const handleRefresh = () => {
+    if (user?.uid) {
+      queryClient.invalidateQueries({ queryKey: ['orders', 'user', user.uid] });
+    }
+  };
 
   // Redirect to auth if not logged in
   if (!authLoading && !user) {
@@ -48,21 +51,6 @@ const Orders = () => {
   const handleShowInvoice = (order: Order) => {
     setSelectedOrder(order);
     setShowInvoice(true);
-  };
-
-  const handleShowPaymentProof = (imageUrl: string) => {
-    setSelectedPaymentProof(imageUrl);
-    setShowPaymentProof(true);
-  };
-
-  const handleUploadPaymentProof = (orderId: string) => {
-    setSelectedOrderId(orderId);
-    setShowPaymentUploader(true);
-  };
-
-  const handlePaymentUploaded = () => {
-    setShowPaymentUploader(false);
-    refetch();
   };
 
   const formatDate = (dateString: string) => {
@@ -138,12 +126,19 @@ const Orders = () => {
       <Header />
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          <div className="flex items-center space-x-3 mb-8">
-            <ShoppingBag className="w-8 h-8 text-primary" />
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Riwayat Pesanan</h1>
-              <p className="text-gray-600">Lihat semua pesanan Anda dan download invoice</p>
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center space-x-3">
+              <ShoppingBag className="w-8 h-8 text-primary" />
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Riwayat Pesanan</h1>
+                <p className="text-gray-600">Lihat semua pesanan Anda dan download invoice</p>
+              </div>
             </div>
+            
+            <Button onClick={handleRefresh} variant="outline" size="sm">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh
+            </Button>
           </div>
 
           {isLoading ? (
@@ -163,7 +158,7 @@ const Orders = () => {
                   Tidak dapat memuat riwayat pesanan. Silakan coba lagi nanti.
                 </p>
                 <Button 
-                  onClick={() => window.location.reload()}
+                  onClick={handleRefresh}
                   variant="outline"
                 >
                   Muat Ulang
@@ -216,32 +211,6 @@ const Orders = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {/* Payment Status */}
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        {order.payment_status ? (
-                          <OrderPaymentStatus 
-                            status={order.payment_status}
-                            paymentProofUrl={order.payment_proof_url}
-                            onViewProof={() => order.payment_proof_url && handleShowPaymentProof(order.payment_proof_url)}
-                          />
-                        ) : (
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <p className="font-medium text-gray-700">Status Pembayaran:</p>
-                              <p className="text-yellow-600 text-sm mt-1">Belum ada bukti pembayaran</p>
-                            </div>
-                            <Button
-                              onClick={() => handleUploadPaymentProof(order.id)}
-                              className="bg-green-600 hover:bg-green-700 text-white"
-                              size="sm"
-                            >
-                              <Upload className="w-4 h-4 mr-2" />
-                              Unggah Bukti
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-
                       {/* Order Items Summary - Show ALL items */}
                       <div>
                         <h4 className="font-medium text-gray-900 mb-3">Ringkasan Pesanan:</h4>
@@ -294,17 +263,6 @@ const Orders = () => {
                           <FileText className="w-4 h-4 mr-2" />
                           Lihat Invoice
                         </Button>
-                        
-                        {(!order.payment_proof_url && order.status !== 'cancelled') && (
-                          <Button 
-                            onClick={() => handleUploadPaymentProof(order.id)}
-                            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                          >
-                            <CreditCard className="w-4 h-4 mr-2" />
-                            Unggah Bukti Pembayaran
-                          </Button>
-                        )}
-                        
                         <Button 
                           variant="outline"
                           className="flex-1"
@@ -364,54 +322,6 @@ const Orders = () => {
           }}
           order={selectedOrder}
         />
-      )}
-
-      {/* Payment Proof Modal */}
-      {showPaymentProof && selectedPaymentProof && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-50">
-          <div className="relative max-w-4xl max-h-[90vh]">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowPaymentProof(false)}
-              className="absolute -top-12 right-0 text-white bg-black bg-opacity-50 hover:bg-opacity-70"
-            >
-              ✕ Close
-            </Button>
-            <img 
-              src={selectedPaymentProof} 
-              alt="Bukti Pembayaran" 
-              className="max-w-full max-h-[80vh] object-contain"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Payment Proof Uploader Modal */}
-      {showPaymentUploader && selectedOrderId && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">Unggah Bukti Pembayaran</h2>
-            <p className="text-gray-600 mb-4">
-              Silakan unggah bukti pembayaran Anda untuk memverifikasi pesanan
-            </p>
-            
-            <PaymentProofUploader 
-              orderId={selectedOrderId} 
-              onSuccess={handlePaymentUploaded}
-            />
-            
-            <div className="mt-4 pt-4 border-t">
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => setShowPaymentUploader(false)}
-              >
-                Batal
-              </Button>
-            </div>
-          </div>
-        </div>
       )}
 
       <Footer />
