@@ -69,6 +69,9 @@ const CheckoutForm = ({ cart, total, onOrderComplete }: CheckoutFormProps) => {
   // Calculate total with shipping
   const totalWithShipping = total + (shippingFee || 0);
 
+  // Move the currency converter hook to the top level
+  const { convertedRupiah } = useCurrencyConverter(totalWithShipping, paymentMethod);
+
   // Update shipping fee when prefecture changes
   useEffect(() => {
     if (shippingRate) {
@@ -80,7 +83,7 @@ const CheckoutForm = ({ cart, total, onOrderComplete }: CheckoutFormProps) => {
     }
   }, [shippingRate]);
 
-  const generateWhatsAppMessage = (data: CheckoutFormData) => {
+  const generateWhatsAppMessage = (data: CheckoutFormData, convertedRupiahValue?: number) => {
     const productList = cart.map(item => {
       const variants = item.selectedVariants 
         ? Object.entries(item.selectedVariants).map(([type, value]) => `${type}: ${value}`).join(', ')
@@ -93,12 +96,9 @@ const CheckoutForm = ({ cart, total, onOrderComplete }: CheckoutFormProps) => {
       ? `\n*ONGKOS KIRIM: ¥${shippingFee.toLocaleString()}*` 
       : '';
 
-    // Get currency conversion info
-    const { convertedRupiah } = useCurrencyConverter(totalWithShipping, data.paymentMethod);
-    
     // Add Rupiah conversion if applicable
-    const rupiahInfo = convertedRupiah && data.paymentMethod === 'Bank Transfer (Rupiah)'
-      ? `\n*TOTAL DALAM RUPIAH: Rp${convertedRupiah.toLocaleString('id-ID')}*`
+    const rupiahInfo = convertedRupiahValue && data.paymentMethod === 'Bank Transfer (Rupiah)'
+      ? `\n*TOTAL DALAM RUPIAH: Rp${convertedRupiahValue.toLocaleString('id-ID')}*`
       : '';
 
     const message = `Halo Admin Injapan Food
@@ -213,7 +213,7 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
       
       // Open WhatsApp after a short delay
       setTimeout(() => {
-        const whatsappMessage = generateWhatsAppMessage(data);
+        const whatsappMessage = generateWhatsAppMessage(data, convertedRupiah);
         const phoneNumber = '+817084894699'; // Replace with your actual WhatsApp number
         const whatsappUrl = `https://wa.me/${phoneNumber}?text=${whatsappMessage}`;
         window.open(whatsappUrl, '_blank');
