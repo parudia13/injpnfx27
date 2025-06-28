@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/hooks/useFirebaseAuth';
 import { LanguageProvider } from '@/hooks/useLanguage';
+import OfflineNotice from '@/components/OfflineNotice';
 import Index from '@/pages/Index';
 import Products from '@/pages/Products';
 import ProductDetail from '@/pages/ProductDetail';
@@ -21,12 +22,12 @@ import AddProduct from '@/pages/admin/AddProduct';
 import EditProduct from '@/pages/admin/EditProduct';
 import OrdersHistory from '@/pages/admin/OrdersHistory';
 import OrderConfirmation from '@/pages/admin/OrderConfirmation';
+import PaymentVerification from '@/pages/admin/PaymentVerification';
 import UserManagement from '@/pages/admin/UserManagement';
 import AdminLogs from '@/pages/admin/AdminLogs';
 import ImportExport from '@/pages/admin/ImportExport';
 import RecycleBin from '@/pages/admin/RecycleBin';
 import ShippingRates from '@/pages/admin/ShippingRates';
-import PaymentVerification from '@/pages/admin/PaymentVerification';
 
 import './App.css';
 
@@ -77,6 +78,7 @@ function App() {
               <Route path="*" element={<NotFound />} />
             </Routes>
             <Toaster />
+            <OfflineNotice />
           </Router>
         </LanguageProvider>
       </AuthProvider>
