@@ -18,14 +18,14 @@ const OrderConfirmationPage = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const queryClient = useQueryClient();
 
-  const handleShowInvoice = (order: Order) => {
-    setSelectedOrder(order);
-    setShowInvoice(true);
-  };
-
   // Add manual refresh function instead of relying on automatic refetching
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ['pending-orders'] });
+  };
+
+  const handleShowInvoice = (order: Order) => {
+    setSelectedOrder(order);
+    setShowInvoice(true);
   };
 
   if (isLoading) {
