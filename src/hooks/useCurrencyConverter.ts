@@ -13,41 +13,64 @@ export const useCurrencyConverter = (yenAmount: number, paymentMethod: string) =
   const [lastFetchTime, setLastFetchTime] = useState<number>(0);
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
 
-  const fetchExchangeRate = () => {
+  const fetchExchangeRate = async () => {
     setIsLoading(true);
     setError(null);
     
-    // Use exchangerate.host API to get JPY to IDR conversion rate
-    fetch('https://api.exchangerate.host/convert?from=JPY&to=IDR')
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
+    try {
+      // Try primary API first
+      const response = await fetch('https://api.exchangerate.host/convert?from=JPY&to=IDR');
+      
+      if (!response.ok) {
+        throw new Error('Primary API failed');
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        const rate = data.info.rate;
+        setExchangeRate(rate);
+        const rupiah = yenAmount * rate;
+        setConvertedRupiah(Math.round(rupiah));
+        setLastFetchTime(Date.now());
+        setIsLoading(false);
+      } else {
+        throw new Error('Failed to get exchange rate from primary API');
+      }
+    } catch (primaryError) {
+      console.error('Primary API error:', primaryError);
+      
+      try {
+        // Try backup API if primary fails
+        const backupResponse = await fetch('https://open.er-api.com/v6/latest/JPY');
+        
+        if (!backupResponse.ok) {
+          throw new Error('Backup API failed');
         }
-        return response.json();
-      })
-      .then(data => {
-        if (data.success) {
-          const rate = data.info.rate;
-          setExchangeRate(rate);
-          const rupiah = yenAmount * rate;
+        
+        const backupData = await backupResponse.json();
+        
+        if (backupData.rates && backupData.rates.IDR) {
+          const backupRate = backupData.rates.IDR;
+          setExchangeRate(backupRate);
+          const rupiah = yenAmount * backupRate;
           setConvertedRupiah(Math.round(rupiah));
           setLastFetchTime(Date.now());
+          setIsLoading(false);
         } else {
-          throw new Error('Failed to get exchange rate');
+          throw new Error('Invalid data from backup API');
         }
-      })
-      .catch(err => {
-        console.error('Failed to convert currency:', err);
-        setError('Failed to get exchange rate. Using fallback rate.');
+      } catch (backupError) {
+        console.error('Backup API error:', backupError);
         
-        // Fallback to approximate rate if API fails (1 JPY ≈ 100 IDR)
-        const fallbackRate = 100;
+        // Use fallback rate if both APIs fail
+        setError('Failed to get exchange rate. Using fallback rate.');
+        const fallbackRate = 100; // Approximate rate: 1 JPY ≈ 100 IDR
         setExchangeRate(fallbackRate);
         setConvertedRupiah(Math.round(yenAmount * fallbackRate));
-      })
-      .finally(() => {
         setIsLoading(false);
-      });
+      }
+    }
   };
 
   useEffect(() => {

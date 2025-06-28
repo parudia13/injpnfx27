@@ -39,3 +39,14 @@ export const formatYen = (amount: number): string => {
 export const convertYenToRupiah = (yenAmount: number, rate: number = 100): number => {
   return Math.round(yenAmount * rate);
 };
+
+/**
+ * Fallback function to convert JPY to IDR when API fails
+ * Uses a conservative estimate of 1 JPY = 100 IDR
+ * @param yenAmount - Amount in Japanese Yen
+ * @returns Estimated amount in Indonesian Rupiah
+ */
+export const fallbackYenToRupiah = (yenAmount: number): number => {
+  const fallbackRate = 100; // Conservative estimate: 1 JPY ≈ 100 IDR
+  return Math.round(yenAmount * fallbackRate);
+};

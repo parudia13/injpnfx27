@@ -62,7 +62,7 @@ const PaymentMethodInfo = ({ paymentMethod, totalAmount }: PaymentMethodInfoProp
                 
                 {error && (
                   <p className="text-xs text-yellow-600 mt-2">
-                    {error} Kurs yang ditampilkan adalah perkiraan.
+                    Failed to get exchange rate. Using fallback rate. Kurs yang ditampilkan adalah perkiraan.
                   </p>
                 )}
                 
