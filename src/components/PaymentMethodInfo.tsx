@@ -72,7 +72,7 @@ const PaymentMethodInfo = ({ paymentMethod, totalAmount }: PaymentMethodInfoProp
                 
                 <div className="mt-3 text-sm text-blue-600">
                   <p className="font-medium">Informasi Rekening:</p>
-                  <p>Bank: BCA</p>
+                  <p>Bank: BNI</p>
                   <p>No. Rekening: 1234567890</p>
                   <p>Atas Nama: PT. Injapan Shop</p>
                 </div>
