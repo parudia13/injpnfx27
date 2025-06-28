@@ -12,11 +12,25 @@ const InstallPWAButton = () => {
   const [isInstallable, setIsInstallable] = useState(false);
   const [isIOSDevice, setIsIOSDevice] = useState(false);
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
     // Check if it's an iOS device
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
     setIsIOSDevice(isIOS);
+
+    // Check if app is already installed (in standalone mode)
+    const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || 
+                              (window.navigator as any).standalone || 
+                              document.referrer.includes('android-app://');
+    
+    setIsStandalone(isInStandaloneMode);
+    
+    if (isInStandaloneMode) {
+      console.log('App is running in standalone mode (already installed)');
+      setIsInstallable(false);
+      return;
+    }
 
     // Listen for the beforeinstallprompt event
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -26,6 +40,7 @@ const InstallPWAButton = () => {
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       // Update UI to show the install button
       setIsInstallable(true);
+      console.log('BeforeInstallPrompt event was fired and saved');
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -63,7 +78,8 @@ const InstallPWAButton = () => {
     setIsInstallable(false);
   };
 
-  if (!isInstallable && !isIOSDevice) return null;
+  // Don't show the button if the app is already installed or not installable
+  if (isStandalone || (!isInstallable && !isIOSDevice)) return null;
 
   return (
     <div className="fixed bottom-20 right-6 z-40">
