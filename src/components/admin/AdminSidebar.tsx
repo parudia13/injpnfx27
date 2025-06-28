@@ -31,7 +31,7 @@ const AdminSidebar = () => {
       title: 'Verifikasi Pembayaran',
       href: '/admin/payment-verification',
       icon: CreditCard,
-      description: 'Payment proofs'
+      description: 'Payment verification'
     },
     {
       title: 'Produk',

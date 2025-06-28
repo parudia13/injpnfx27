@@ -21,12 +21,12 @@ import AddProduct from '@/pages/admin/AddProduct';
 import EditProduct from '@/pages/admin/EditProduct';
 import OrdersHistory from '@/pages/admin/OrdersHistory';
 import OrderConfirmation from '@/pages/admin/OrderConfirmation';
-import PaymentVerification from '@/pages/admin/PaymentVerification';
 import UserManagement from '@/pages/admin/UserManagement';
 import AdminLogs from '@/pages/admin/AdminLogs';
 import ImportExport from '@/pages/admin/ImportExport';
 import RecycleBin from '@/pages/admin/RecycleBin';
 import ShippingRates from '@/pages/admin/ShippingRates';
+import PaymentVerification from '@/pages/admin/PaymentVerification';
 
 import './App.css';
 

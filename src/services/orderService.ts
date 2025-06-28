@@ -94,6 +94,33 @@ export const getPendingOrders = async (): Promise<Order[]> => {
   }
 };
 
+export const getPendingPaymentOrders = async (): Promise<Order[]> => {
+  try {
+    const ordersRef = collection(db, ORDERS_COLLECTION);
+    
+    // Query for orders with pending payment status
+    const q = query(
+      ordersRef,
+      where('payment_status', '==', 'pending')
+    );
+    
+    const snapshot = await getDocs(q);
+    
+    // Sort manually on client side
+    const orders = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as Order)).sort((a, b) => {
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+    
+    return orders;
+  } catch (error) {
+    console.error('Error fetching pending payment orders:', error);
+    throw error;
+  }
+};
+
 export const createOrder = async (orderData: {
   user_id?: string;
   customer_info: {
@@ -104,11 +131,13 @@ export const createOrder = async (orderData: {
     address: string;
     phone: string;
     notes?: string;
+    payment_method?: string;
   };
   items: any[];
   total_price: number;
   status?: string;
   shipping_fee?: number;
+  payment_proof_url?: string;
 }) => {
   try {
     console.log('Creating order with data:', orderData);
@@ -120,7 +149,9 @@ export const createOrder = async (orderData: {
       items: orderData.items,
       total_price: orderData.total_price,
       status: orderData.status || 'pending',
+      payment_status: 'pending', // Default payment status
       shipping_fee: orderData.shipping_fee || 0,
+      payment_proof_url: orderData.payment_proof_url || null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     });
@@ -133,15 +164,40 @@ export const createOrder = async (orderData: {
   }
 };
 
-export const updateOrderStatus = async (orderId: string, status: string) => {
+export const updateOrderStatus = async (
+  orderId: string, 
+  status: string, 
+  paymentStatus?: string
+) => {
+  try {
+    const orderRef = doc(db, ORDERS_COLLECTION, orderId);
+    const updateData: any = {
+      status: status,
+      updated_at: new Date().toISOString()
+    };
+    
+    // Update payment status if provided
+    if (paymentStatus) {
+      updateData.payment_status = paymentStatus;
+    }
+    
+    await updateDoc(orderRef, updateData);
+  } catch (error) {
+    console.error('Error updating order status:', error);
+    throw error;
+  }
+};
+
+export const updatePaymentProof = async (orderId: string, paymentProofUrl: string) => {
   try {
     const orderRef = doc(db, ORDERS_COLLECTION, orderId);
     await updateDoc(orderRef, {
-      status: status,
+      payment_proof_url: paymentProofUrl,
+      payment_status: 'pending', // Set to pending for verification
       updated_at: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Error updating order status:', error);
+    console.error('Error updating payment proof:', error);
     throw error;
   }
 };

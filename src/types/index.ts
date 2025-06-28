@@ -32,6 +32,8 @@ export interface Order {
   total_amount: number;
   total_price: number; // Alternative property name used in some components
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'confirmed' | 'completed';
+  payment_status?: 'pending' | 'verified' | 'rejected';
+  payment_proof_url?: string;
   shipping_address: ShippingAddress;
   payment_method: 'credit_card' | 'paypal' | 'cod';
   created_at: string;
@@ -60,6 +62,7 @@ export interface CustomerInfo {
   postal_code?: string;
   city?: string;
   notes?: string;
+  payment_method?: string;
 }
 
 export interface ShippingAddress {
@@ -176,4 +179,15 @@ export interface ShippingRate {
   delivery_time: string;
   created_at?: string;
   updated_at?: string;
+}
+
+// Payment Proof interface
+export interface PaymentProof {
+  id: string;
+  order_id: string;
+  image_url: string;
+  uploaded_at: string;
+  verified_at?: string;
+  verified_by?: string;
+  status: 'pending' | 'verified' | 'rejected';
 }

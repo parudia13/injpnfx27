@@ -1,123 +1,74 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Filter, Eye, CheckCircle, XCircle, AlertTriangle, Calendar, CreditCard, User, FileImage, Upload, RefreshCw, Info } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { Search, Eye, CheckCircle, XCircle, Clock, Package, FileText, CreditCard } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { collection, getDocs, query, where, orderBy, doc, updateDoc, getFirestore, setDoc } from 'firebase/firestore';
-import { db } from '@/config/firebase';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-
-interface PaymentProof {
-  id: string;
-  user_id?: string;
-  nama: string;
-  email: string;
-  invoice_id: string;
-  metode_pembayaran: string;
-  bukti_url: string;
-  uploaded_at: string;
-  status: 'Menunggu' | 'Terverifikasi' | 'Ditolak';
-  notes?: string;
-}
+import InvoiceModal from '@/components/InvoiceModal';
+import { Order } from '@/types';
+import { updateOrderStatus } from '@/services/orderService';
+import { useQueryClient } from '@tanstack/react-query';
+import ErrorState from '@/components/ErrorState';
+import EmptyState from '@/components/EmptyState';
+import { useOrders } from '@/hooks/useOrders';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 const PaymentVerification = () => {
+  const { data: orders = [], isLoading, error } = useOrders();
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedPayment, setSelectedPayment] = useState<PaymentProof | null>(null);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [imageError, setImageError] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('pending');
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [showInvoice, setShowInvoice] = useState(false);
+  const [invoiceOrder, setInvoiceOrder] = useState<Order | null>(null);
+  const [showPaymentProof, setShowPaymentProof] = useState(false);
+  const [selectedPaymentProof, setSelectedPaymentProof] = useState<string | null>(null);
   const queryClient = useQueryClient();
-  const firestore = getFirestore();
 
-  // Fetch payment proofs from Firestore
-  const { data: paymentProofs = [], isLoading, error, refetch } = useQuery({
-    queryKey: ['payment-proofs'],
-    queryFn: async () => {
-      try {
-        // Check if collection exists
-        const collectionRef = collection(db, 'payment_proofs');
-        const snapshot = await getDocs(collectionRef);
-        
-        // If collection doesn't exist or is empty, create it with sample data for testing
-        if (snapshot.empty) {
-          console.log('Payment proofs collection is empty, you can add data through the checkout process');
-          return [];
-        }
-        
-        // If collection exists, fetch data
-        const paymentProofsRef = collection(db, 'payment_proofs');
-        let q = query(paymentProofsRef, orderBy('uploaded_at', 'desc'));
-        
-        const dataSnapshot = await getDocs(q);
-        return dataSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as PaymentProof[];
-      } catch (error) {
-        console.error('Error fetching payment proofs:', error);
-        throw error;
-      }
-    },
-    staleTime: 30000, // 30 seconds
-  });
-
-  // Filter payment proofs based on search term and status filter
-  const filteredPaymentProofs = paymentProofs.filter(proof => {
+  // Filter orders by payment status and search term
+  const filteredOrders = orders.filter(order => {
     const matchesSearch = 
-      proof.nama?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      proof.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      proof.invoice_id?.toLowerCase().includes(searchTerm.toLowerCase());
+      order.customer_info?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.customer_info?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.id.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = statusFilter === 'all' || proof.status === statusFilter;
+    // Filter by payment status
+    const matchesStatus = statusFilter === 'all' || 
+      (statusFilter === 'pending' && order.payment_status === 'pending') ||
+      (statusFilter === 'verified' && order.payment_status === 'verified') ||
+      (statusFilter === 'rejected' && order.payment_status === 'rejected');
     
     return matchesSearch && matchesStatus;
   });
 
-  // Handle verification
-  const handleVerify = async (paymentId: string) => {
+  const getStatusBadge = (status: string) => {
+    const config = {
+      pending: { color: 'bg-yellow-100 text-yellow-800', icon: Clock, label: 'Menunggu Verifikasi' },
+      verified: { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: 'Pembayaran Terverifikasi' },
+      rejected: { color: 'bg-red-100 text-red-800', icon: XCircle, label: 'Pembayaran Ditolak' },
+    };
+
+    const { color, icon: Icon, label } = config[status as keyof typeof config] || config.pending;
+
+    return (
+      <Badge className={`${color} flex items-center space-x-1`}>
+        <Icon className="w-3 h-3" />
+        <span>{label}</span>
+      </Badge>
+    );
+  };
+
+  const handleVerifyPayment = async (orderId: string) => {
     try {
-      const paymentRef = doc(firestore, 'payment_proofs', paymentId);
-      await updateDoc(paymentRef, {
-        status: 'Terverifikasi',
-        verified_at: new Date().toISOString()
-      });
-      
-      // Also update the corresponding order if needed
-      const payment = paymentProofs.find(p => p.id === paymentId);
-      if (payment && payment.invoice_id) {
-        // Find order by invoice_id and update its payment status
-        const ordersRef = collection(firestore, 'orders');
-        const q = query(ordersRef, where('id', '==', payment.invoice_id));
-        const orderSnapshot = await getDocs(q);
-        
-        if (!orderSnapshot.empty) {
-          const orderDoc = orderSnapshot.docs[0];
-          await updateDoc(doc(firestore, 'orders', orderDoc.id), {
-            'customer_info.payment_status': 'verified',
-            updated_at: new Date().toISOString()
-          });
-        }
-      }
+      await updateOrderStatus(orderId, 'confirmed', 'verified');
+      await queryClient.invalidateQueries({ queryKey: ['orders'] });
       
       toast({
         title: "Pembayaran Terverifikasi",
-        description: "Status pembayaran telah diperbarui menjadi terverifikasi",
+        description: "Status pembayaran berhasil diubah menjadi terverifikasi",
       });
-      
-      // Close modal and refresh data
-      setIsDetailModalOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['payment-proofs'] });
-      refetch();
     } catch (error) {
       console.error('Error verifying payment:', error);
       toast({
@@ -128,45 +79,15 @@ const PaymentVerification = () => {
     }
   };
 
-  // Handle rejection
-  const handleReject = async () => {
-    if (!selectedPayment) return;
-    
+  const handleRejectPayment = async (orderId: string) => {
     try {
-      const paymentRef = doc(firestore, 'payment_proofs', selectedPayment.id);
-      await updateDoc(paymentRef, {
-        status: 'Ditolak',
-        notes: rejectionReason,
-        rejected_at: new Date().toISOString()
-      });
-      
-      // Also update the corresponding order if needed
-      if (selectedPayment.invoice_id) {
-        const ordersRef = collection(firestore, 'orders');
-        const q = query(ordersRef, where('id', '==', selectedPayment.invoice_id));
-        const orderSnapshot = await getDocs(q);
-        
-        if (!orderSnapshot.empty) {
-          const orderDoc = orderSnapshot.docs[0];
-          await updateDoc(doc(firestore, 'orders', orderDoc.id), {
-            'customer_info.payment_status': 'rejected',
-            'customer_info.payment_notes': rejectionReason,
-            updated_at: new Date().toISOString()
-          });
-        }
-      }
+      await updateOrderStatus(orderId, 'cancelled', 'rejected');
+      await queryClient.invalidateQueries({ queryKey: ['orders'] });
       
       toast({
         title: "Pembayaran Ditolak",
-        description: "Status pembayaran telah diperbarui menjadi ditolak",
+        description: "Status pembayaran berhasil diubah menjadi ditolak",
       });
-      
-      // Close modals and refresh data
-      setIsRejectModalOpen(false);
-      setIsDetailModalOpen(false);
-      setRejectionReason('');
-      queryClient.invalidateQueries({ queryKey: ['payment-proofs'] });
-      refetch();
     } catch (error) {
       console.error('Error rejecting payment:', error);
       toast({
@@ -177,371 +98,355 @@ const PaymentVerification = () => {
     }
   };
 
-  // Format date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('id-ID', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const handleShowInvoice = (order: Order) => {
+    setInvoiceOrder(order);
+    setShowInvoice(true);
   };
 
-  // Get status badge
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'Menunggu':
-        return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">Menunggu</Badge>;
-      case 'Terverifikasi':
-        return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Terverifikasi</Badge>;
-      case 'Ditolak':
-        return <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">Ditolak</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
+  const handleShowPaymentProof = (imageUrl: string) => {
+    setSelectedPaymentProof(imageUrl);
+    setShowPaymentProof(true);
   };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('ja-JP', {
+      style: 'currency',
+      currency: 'JPY',
+    }).format(price);
+  };
+
+  if (isLoading) {
+    return (
+      <AdminLayout>
+        <div className="p-8 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <AdminLayout>
+        <div className="p-8">
+          <ErrorState 
+            title="Error Loading Orders"
+            message="Terjadi kesalahan saat memuat data pesanan. Silakan coba lagi."
+            onRetry={() => queryClient.invalidateQueries({ queryKey: ['orders'] })}
+          />
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
       <div className="p-8">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Verifikasi Pembayaran</h1>
-            <p className="text-gray-600">Kelola dan verifikasi bukti pembayaran dari pelanggan</p>
-          </div>
-          <Button 
-            variant="outline" 
-            onClick={() => refetch()}
-            className="flex items-center space-x-2"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh Data
-          </Button>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Verifikasi Pembayaran</h1>
+          <p className="text-gray-600">Verifikasi bukti pembayaran dari pelanggan</p>
         </div>
 
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Filter className="w-5 h-5" />
-              <span>Filter & Pencarian</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                <Input
-                  placeholder="Cari berdasarkan nama, email, atau invoice..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full md:w-48">
-                  <SelectValue placeholder="Filter Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Status</SelectItem>
-                  <SelectItem value="Menunggu">Menunggu</SelectItem>
-                  <SelectItem value="Terverifikasi">Terverifikasi</SelectItem>
-                  <SelectItem value="Ditolak">Ditolak</SelectItem>
-                </SelectContent>
-              </Select>
+        {/* Filters */}
+        <div className="mb-6 flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                placeholder="Cari berdasarkan nama, email, atau ID pesanan..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Filter Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Status</SelectItem>
+              <SelectItem value="pending">Menunggu Verifikasi</SelectItem>
+              <SelectItem value="verified">Terverifikasi</SelectItem>
+              <SelectItem value="rejected">Ditolak</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Daftar Bukti Pembayaran ({filteredPaymentProofs.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                <span className="ml-2">Memuat data pembayaran...</span>
-              </div>
-            ) : error ? (
-              <div className="text-center py-8">
-                <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-                <p className="text-lg font-medium text-gray-900 mb-2">Terjadi Kesalahan</p>
-                <p className="text-gray-600 mb-4">Gagal memuat data pembayaran</p>
-                <Button onClick={() => refetch()}>Coba Lagi</Button>
-              </div>
-            ) : filteredPaymentProofs.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="flex justify-center mb-6">
-                  <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center">
-                    <FileImage className="w-12 h-12 text-gray-400" />
+        {/* Orders List */}
+        <div className="space-y-4">
+          {filteredOrders.length === 0 ? (
+            <EmptyState 
+              title="Tidak ada pesanan ditemukan"
+              message={searchTerm || statusFilter !== 'all' 
+                ? 'Coba ubah filter pencarian atau status'
+                : 'Belum ada pesanan yang perlu diverifikasi'
+              }
+              icon={<CreditCard className="w-16 h-16 text-gray-400 mx-auto" />}
+            />
+          ) : (
+            filteredOrders.map((order) => (
+              <Card key={order.id}>
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-lg">
+                        Order #{order.id.slice(-8)}
+                      </CardTitle>
+                      <p className="text-sm text-gray-600">
+                        {order.customer_info?.name} • {order.customer_info?.email}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(order.created_at).toLocaleString('id-ID')}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      {order.payment_status && getStatusBadge(order.payment_status)}
+                      <p className="text-lg font-bold mt-2">
+                        {formatPrice(order.total_price)}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <h3 className="text-xl font-medium text-gray-900 mb-2">
-                  Belum ada bukti pembayaran
-                </h3>
-                <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                  Bukti pembayaran yang dikirim pelanggan akan muncul di sini
-                </p>
-                
-                <div className="max-w-md mx-auto">
-                  <Alert className="bg-blue-50 border-blue-200 mb-4">
-                    <Info className="h-4 w-4 text-blue-800" />
-                    <AlertDescription className="text-blue-800 text-sm">
-                      Untuk menggunakan fitur ini, Anda perlu membuat koleksi <code className="bg-blue-100 px-1 py-0.5 rounded text-xs">payment_proofs</code> di Firebase
-                    </AlertDescription>
-                  </Alert>
-                  
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-left">
-                    <h4 className="font-medium text-gray-800 mb-2 flex items-center">
-                      <Upload className="w-4 h-4 mr-2 text-primary" />
-                      Proses Upload Bukti Pembayaran
-                    </h4>
-                    <ol className="text-sm text-gray-600 space-y-2 list-decimal list-inside">
-                      <li>Pelanggan memilih metode pembayaran transfer bank saat checkout</li>
-                      <li>Pelanggan mengupload bukti transfer melalui form checkout</li>
-                      <li>Bukti pembayaran disimpan di Firebase Storage</li>
-                      <li>Data bukti pembayaran disimpan di koleksi <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">payment_proofs</code></li>
-                      <li>Admin dapat memverifikasi atau menolak bukti pembayaran</li>
-                    </ol>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nama & Email</TableHead>
-                      <TableHead>Invoice</TableHead>
-                      <TableHead>Metode Pembayaran</TableHead>
-                      <TableHead>Waktu Upload</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Aksi</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredPaymentProofs.map((payment) => (
-                      <TableRow key={payment.id}>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <User className="w-4 h-4 text-gray-400" />
-                            <div>
-                              <div className="font-medium">{payment.nama}</div>
-                              <div className="text-sm text-gray-500">{payment.email}</div>
-                              {payment.user_id && (
-                                <div className="text-xs text-gray-400">ID: {payment.user_id.slice(0, 8)}...</div>
-                              )}
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {/* Payment Info */}
+                    <div>
+                      <h4 className="font-medium mb-2">Informasi Pembayaran:</h4>
+                      <div className="bg-gray-50 p-3 rounded-lg">
+                        <p className="text-sm"><strong>Metode:</strong> {order.customer_info?.payment_method || 'Tidak ada informasi'}</p>
+                        {order.payment_proof_url ? (
+                          <div className="mt-2">
+                            <p className="text-sm font-medium text-gray-700 mb-2">Bukti Pembayaran:</p>
+                            <div className="flex items-center space-x-2">
+                              <img 
+                                src={order.payment_proof_url} 
+                                alt="Bukti Pembayaran" 
+                                className="w-16 h-16 object-cover rounded-md cursor-pointer border border-gray-200"
+                                onClick={() => handleShowPaymentProof(order.payment_proof_url || '')}
+                              />
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleShowPaymentProof(order.payment_proof_url || '')}
+                              >
+                                <Eye className="w-4 h-4 mr-2" />
+                                Lihat Bukti
+                              </Button>
                             </div>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium">{payment.invoice_id}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <CreditCard className="w-4 h-4 text-gray-400" />
-                            <span>{payment.metode_pembayaran}</span>
+                        ) : (
+                          <p className="text-sm text-yellow-600 mt-2">Belum ada bukti pembayaran</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Order Items Summary */}
+                    <div>
+                      <h4 className="font-medium mb-2">Ringkasan Pesanan:</h4>
+                      <div className="space-y-2">
+                        {order.items?.slice(0, 3).map((item, index) => (
+                          <div key={index} className="flex justify-between text-sm">
+                            <span>{item.name} x{item.quantity}</span>
+                            <span>{formatPrice(item.price * item.quantity)}</span>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <Calendar className="w-4 h-4 text-gray-400" />
-                            <span>{formatDate(payment.uploaded_at)}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {getStatusBadge(payment.status)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedPayment(payment);
-                                setIsDetailModalOpen(true);
-                                setImageError(false);
-                              }}
-                            >
-                              <Eye className="w-4 h-4 mr-1" />
-                              Detail
-                            </Button>
-                            
-                            {payment.status === 'Menunggu' && (
+                        ))}
+                        {(order.items?.length || 0) > 3 && (
+                          <p className="text-sm text-gray-500">
+                            dan {(order.items?.length || 0) - 3} item lainnya...
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex space-x-2 pt-4 border-t">
+                      {order.payment_status === 'pending' && (
+                        <>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
                               <Button
-                                variant="outline"
+                                className="bg-green-600 hover:bg-green-700 text-white"
                                 size="sm"
-                                className="bg-green-50 text-green-600 border-green-200 hover:bg-green-100"
-                                onClick={() => handleVerify(payment.id)}
                               >
-                                <CheckCircle className="w-4 h-4 mr-1" />
+                                <CheckCircle className="w-4 h-4 mr-2" />
                                 Verifikasi
                               </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Konfirmasi Verifikasi</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Apakah Anda yakin ingin memverifikasi pembayaran ini? Status pesanan akan berubah menjadi "Dikonfirmasi".
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Batal</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleVerifyPayment(order.id)}
+                                  className="bg-green-600 hover:bg-green-700"
+                                >
+                                  Verifikasi
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
 
-        {/* Detail Modal */}
-        {selectedPayment && (
-          <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="flex items-center space-x-2">
-                  <FileImage className="w-5 h-5" />
-                  <span>Detail Bukti Pembayaran</span>
-                </DialogTitle>
-              </DialogHeader>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Payment Information */}
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-3">Informasi Pembayaran</h3>
-                    <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-                      <div>
-                        <span className="font-medium text-gray-700">Nama:</span>
-                        <span className="ml-2">{selectedPayment.nama}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">Email:</span>
-                        <span className="ml-2">{selectedPayment.email}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">Invoice ID:</span>
-                        <span className="ml-2">{selectedPayment.invoice_id}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">Metode Pembayaran:</span>
-                        <span className="ml-2">{selectedPayment.metode_pembayaran}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">Waktu Upload:</span>
-                        <span className="ml-2">{formatDate(selectedPayment.uploaded_at)}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">Status:</span>
-                        <span className="ml-2">{getStatusBadge(selectedPayment.status)}</span>
-                      </div>
-                      {selectedPayment.notes && (
-                        <div>
-                          <span className="font-medium text-gray-700">Catatan:</span>
-                          <p className="mt-1 text-sm bg-white p-2 rounded border">{selectedPayment.notes}</p>
-                        </div>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                              >
+                                <XCircle className="w-4 h-4 mr-2" />
+                                Tolak
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Konfirmasi Penolakan</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Apakah Anda yakin ingin menolak pembayaran ini? Status pesanan akan berubah menjadi "Dibatalkan".
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Batal</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleRejectPayment(order.id)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Tolak Pembayaran
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </>
                       )}
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedOrder(order)}
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        Detail
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleShowInvoice(order)}
+                        className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        Invoice
+                      </Button>
                     </div>
                   </div>
-                  
-                  {/* Action Buttons */}
-                  {selectedPayment.status === 'Menunggu' && (
-                    <div className="flex space-x-3">
-                      <Button 
-                        className="flex-1 bg-green-600 hover:bg-green-700"
-                        onClick={() => handleVerify(selectedPayment.id)}
-                      >
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        Verifikasi Pembayaran
-                      </Button>
-                      
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
-                          >
-                            <XCircle className="w-4 h-4 mr-2" />
-                            Tolak Pembayaran
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Tolak Bukti Pembayaran</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Masukkan alasan penolakan bukti pembayaran ini. Alasan ini akan disimpan dan dapat dilihat oleh admin lain.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <div className="py-4">
-                            <Input
-                              placeholder="Alasan penolakan..."
-                              value={rejectionReason}
-                              onChange={(e) => setRejectionReason(e.target.value)}
-                              className="w-full"
-                            />
-                          </div>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Batal</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={handleReject}
-                              className="bg-red-600 hover:bg-red-700"
-                            >
-                              Tolak Pembayaran
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  )}
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+
+        {/* Order Detail Modal */}
+        {selectedOrder && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <Card className="w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle>Detail Order #{selectedOrder.id.slice(-8)}</CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedOrder(null)}
+                  >
+                    ✕
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h4 className="font-medium mb-2">Customer Information:</h4>
+                  <div className="bg-gray-50 p-3 rounded">
+                    <p><strong>Name:</strong> {selectedOrder.customer_info?.name}</p>
+                    <p><strong>Email:</strong> {selectedOrder.customer_info?.email}</p>
+                    <p><strong>Phone:</strong> {selectedOrder.customer_info?.phone}</p>
+                    <p><strong>Address:</strong> {selectedOrder.customer_info?.address}</p>
+                    <p><strong>Prefecture:</strong> {selectedOrder.customer_info?.prefecture}</p>
+                    <p><strong>Postal Code:</strong> {selectedOrder.customer_info?.postal_code}</p>
+                    {selectedOrder.customer_info?.notes && (
+                      <p><strong>Notes:</strong> {selectedOrder.customer_info.notes}</p>
+                    )}
+                  </div>
                 </div>
                 
-                {/* Payment Proof Image */}
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">Bukti Pembayaran</h3>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    {imageError ? (
-                      <div className="aspect-auto h-[300px] flex flex-col items-center justify-center border border-gray-200 rounded-md bg-gray-100">
-                        <AlertTriangle className="w-12 h-12 text-yellow-500 mb-2" />
-                        <p className="text-gray-600 text-sm">Gambar tidak dapat dimuat</p>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="mt-2"
-                          onClick={() => setImageError(false)}
-                        >
-                          Coba Lagi
-                        </Button>
+                  <h4 className="font-medium mb-2">Order Items:</h4>
+                  <div className="space-y-2">
+                    {selectedOrder.items?.map((item, index) => (
+                      <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                        <div>
+                          <p className="font-medium">{item.name}</p>
+                          <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
+                        </div>
+                        <p className="font-medium">{formatPrice(item.price * item.quantity)}</p>
                       </div>
-                    ) : (
-                      <div className="aspect-auto max-h-[400px] overflow-hidden rounded-md border border-gray-200">
-                        <img 
-                          src={selectedPayment.bukti_url} 
-                          alt="Bukti Pembayaran" 
-                          className="w-full h-full object-contain"
-                          onError={(e) => {
-                            setImageError(true);
-                            (e.target as HTMLImageElement).src = '/placeholder.svg';
-                          }}
-                        />
-                      </div>
-                    )}
-                    <div className="mt-3 flex justify-center">
-                      <a 
-                        href={selectedPayment.bukti_url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline text-sm"
-                      >
-                        Buka gambar di tab baru
-                      </a>
+                    ))}
+                  </div>
+                  <div className="border-t pt-2 mt-2">
+                    <div className="flex justify-between font-bold">
+                      <span>Total:</span>
+                      <span>{formatPrice(selectedOrder.total_price)}</span>
                     </div>
                   </div>
                 </div>
-              </div>
-              
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsDetailModalOpen(false)}>
-                  Tutup
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+
+                <div className="flex space-x-2">
+                  <Button
+                    onClick={() => handleShowInvoice(selectedOrder)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Lihat Invoice
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Invoice Modal */}
+        {showInvoice && invoiceOrder && (
+          <InvoiceModal
+            isOpen={showInvoice}
+            onClose={() => {
+              setShowInvoice(false);
+              setInvoiceOrder(null);
+            }}
+            order={invoiceOrder}
+          />
+        )}
+
+        {/* Payment Proof Modal */}
+        {showPaymentProof && selectedPaymentProof && (
+          <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-50">
+            <div className="relative max-w-4xl max-h-[90vh]">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowPaymentProof(false)}
+                className="absolute -top-12 right-0 text-white bg-black bg-opacity-50 hover:bg-opacity-70"
+              >
+                ✕ Close
+              </Button>
+              <img 
+                src={selectedPaymentProof} 
+                alt="Bukti Pembayaran" 
+                className="max-w-full max-h-[80vh] object-contain"
+              />
+            </div>
+          </div>
         )}
       </div>
     </AdminLayout>
