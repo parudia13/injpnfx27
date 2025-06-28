@@ -38,7 +38,7 @@ export const useCurrencyConverter = (yenAmount: number, paymentMethod: string) =
         throw new Error('Failed to get exchange rate from primary API');
       }
     } catch (primaryError) {
-      console.error('Primary API error:', primaryError);
+      console.warn('Primary API warning:', primaryError);
       
       try {
         // Try backup API if primary fails
@@ -61,7 +61,7 @@ export const useCurrencyConverter = (yenAmount: number, paymentMethod: string) =
           throw new Error('Invalid data from backup API');
         }
       } catch (backupError) {
-        console.error('Backup API error:', backupError);
+        console.error('Both APIs failed - Primary error:', primaryError, 'Backup error:', backupError);
         
         // Use fallback rate if both APIs fail
         setError('Failed to get exchange rate. Using fallback rate.');
