@@ -25,6 +25,7 @@ const checkoutSchema = z.object({
   postalCode: z.string().min(7, 'Kode pos harus 7 digit').max(7, 'Kode pos harus 7 digit').regex(/^[0-9]{7}$/, 'Kode pos harus berupa 7 angka'),
   address: z.string().min(10, 'Alamat lengkap harus minimal 10 karakter'),
   notes: z.string().optional(),
+  paymentMethod: z.string().min(1, 'Silakan pilih metode pembayaran'),
 });
 
 type CheckoutFormData = z.infer<typeof checkoutSchema>;
@@ -56,6 +57,7 @@ const CheckoutForm = ({ cart, total, onOrderComplete }: CheckoutFormProps) => {
       postalCode: '',
       address: '',
       notes: '',
+      paymentMethod: '',
     },
   });
 
@@ -98,6 +100,9 @@ Prefektur: ${data.prefecture}
 Area/Kota/Cho/Machi: ${data.city}
 Kode Pos: ${data.postalCode}
 Alamat lengkap: ${data.address}
+
+*METODE PEMBAYARAN:*
+${data.paymentMethod}
 
 *DAFTAR PRODUK:*
 ${productList}
@@ -143,7 +148,8 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
           city: data.city,
           postal_code: data.postalCode,
           address: data.address,
-          notes: data.notes
+          notes: data.notes,
+          payment_method: data.paymentMethod
         },
         userId: user?.uid,
         shipping_fee: shippingFee || 0
@@ -176,7 +182,7 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
           zip: data.postalCode,
           country: 'Japan'
         },
-        payment_method: 'cod',
+        payment_method: data.paymentMethod as 'credit_card' | 'paypal' | 'cod',
         shipping_fee: shippingFee || 0
       };
 
@@ -358,6 +364,33 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
                     {...field}
                   />
                 </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Payment Method Selection */}
+          <FormField
+            control={form.control}
+            name="paymentMethod"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Pilih Metode Pembayaran *</FormLabel>
+                <Select 
+                  onValueChange={field.onChange} 
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="Pilih metode pembayaran" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent className="bg-white border shadow-lg z-50">
+                    <SelectItem value="COD (Cash on Delivery)">COD (Cash on Delivery)</SelectItem>
+                    <SelectItem value="Bank Transfer (Rupiah)">Bank Transfer (Rupiah)</SelectItem>
+                    <SelectItem value="Bank Transfer (Yucho / ゆうちょ銀行)">Bank Transfer (Yucho / ゆうちょ銀行)</SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
