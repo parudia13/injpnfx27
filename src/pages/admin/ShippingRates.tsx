@@ -309,7 +309,7 @@ const ShippingRates = () => {
     setFormData({
       prefecture_id: rate.prefecture_id,
       kanji: rate.kanji,
-      price: (rate.price ?? 0).toString(),
+      price: rate.price.toString(),
       delivery_time: rate.delivery_time
     });
     setIsEditDialogOpen(true);
