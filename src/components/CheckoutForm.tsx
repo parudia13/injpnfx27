@@ -88,7 +88,7 @@ const CheckoutForm = ({ cart, total, onOrderComplete }: CheckoutFormProps) => {
     }).join('\n');
 
     const shippingInfo = shippingFee 
-      ? `\n*ONGKOS KIRIM: ¥${shippingFee.toLocaleString()}*` 
+      ? `\n*ONGKOS KIRIM (${data.prefecture}): ¥${shippingFee.toLocaleString()}*` 
       : '';
 
     // Payment method information
