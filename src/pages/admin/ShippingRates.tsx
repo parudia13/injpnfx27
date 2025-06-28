@@ -1,6 +1,4 @@
-import { useState } from 'react';
-import { useShippingRates, useAddShippingRate, useUpdateShippingRate, useDeleteShippingRate } from '@/hooks/useShippingRates';
-import { prefectures } from '@/data/prefectures';
+import { useState, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,151 +35,270 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Truck, Plus, Edit, Trash2, Search } from 'lucide-react';
-import { ShippingRate } from '@/types';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where } from 'firebase/firestore';
+import { db } from '@/config/firebase';
+
+// Define the prefectures of Japan
+const japanPrefectures = [
+  { id: 'hokkaido', kanji: '北海道', romaji: 'Hokkaido' },
+  { id: 'aomori', kanji: '青森県', romaji: 'Aomori' },
+  { id: 'iwate', kanji: '岩手県', romaji: 'Iwate' },
+  { id: 'miyagi', kanji: '宮城県', romaji: 'Miyagi' },
+  { id: 'akita', kanji: '秋田県', romaji: 'Akita' },
+  { id: 'yamagata', kanji: '山形県', romaji: 'Yamagata' },
+  { id: 'fukushima', kanji: '福島県', romaji: 'Fukushima' },
+  { id: 'ibaraki', kanji: '茨城県', romaji: 'Ibaraki' },
+  { id: 'tochigi', kanji: '栃木県', romaji: 'Tochigi' },
+  { id: 'gunma', kanji: '群馬県', romaji: 'Gunma' },
+  { id: 'saitama', kanji: '埼玉県', romaji: 'Saitama' },
+  { id: 'chiba', kanji: '千葉県', romaji: 'Chiba' },
+  { id: 'tokyo', kanji: '東京都', romaji: 'Tokyo' },
+  { id: 'kanagawa', kanji: '神奈川県', romaji: 'Kanagawa' },
+  { id: 'niigata', kanji: '新潟県', romaji: 'Niigata' },
+  { id: 'toyama', kanji: '富山県', romaji: 'Toyama' },
+  { id: 'ishikawa', kanji: '石川県', romaji: 'Ishikawa' },
+  { id: 'fukui', kanji: '福井県', romaji: 'Fukui' },
+  { id: 'yamanashi', kanji: '山梨県', romaji: 'Yamanashi' },
+  { id: 'nagano', kanji: '長野県', romaji: 'Nagano' },
+  { id: 'gifu', kanji: '岐阜県', romaji: 'Gifu' },
+  { id: 'shizuoka', kanji: '静岡県', romaji: 'Shizuoka' },
+  { id: 'aichi', kanji: '愛知県', romaji: 'Aichi' },
+  { id: 'mie', kanji: '三重県', romaji: 'Mie' },
+  { id: 'shiga', kanji: '滋賀県', romaji: 'Shiga' },
+  { id: 'kyoto', kanji: '京都府', romaji: 'Kyoto' },
+  { id: 'osaka', kanji: '大阪府', romaji: 'Osaka' },
+  { id: 'hyogo', kanji: '兵庫県', romaji: 'Hyogo' },
+  { id: 'nara', kanji: '奈良県', romaji: 'Nara' },
+  { id: 'wakayama', kanji: '和歌山県', romaji: 'Wakayama' },
+  { id: 'tottori', kanji: '鳥取県', romaji: 'Tottori' },
+  { id: 'shimane', kanji: '島根県', romaji: 'Shimane' },
+  { id: 'okayama', kanji: '岡山県', romaji: 'Okayama' },
+  { id: 'hiroshima', kanji: '広島県', romaji: 'Hiroshima' },
+  { id: 'yamaguchi', kanji: '山口県', romaji: 'Yamaguchi' },
+  { id: 'tokushima', kanji: '徳島県', romaji: 'Tokushima' },
+  { id: 'kagawa', kanji: '香川県', romaji: 'Kagawa' },
+  { id: 'ehime', kanji: '愛媛県', romaji: 'Ehime' },
+  { id: 'kochi', kanji: '高知県', romaji: 'Kochi' },
+  { id: 'fukuoka', kanji: '福岡県', romaji: 'Fukuoka' },
+  { id: 'saga', kanji: '佐賀県', romaji: 'Saga' },
+  { id: 'nagasaki', kanji: '長崎県', romaji: 'Nagasaki' },
+  { id: 'kumamoto', kanji: '熊本県', romaji: 'Kumamoto' },
+  { id: 'oita', kanji: '大分県', romaji: 'Oita' },
+  { id: 'miyazaki', kanji: '宮崎県', romaji: 'Miyazaki' },
+  { id: 'kagoshima', kanji: '鹿児島県', romaji: 'Kagoshima' },
+  { id: 'okinawa', kanji: '沖縄県', romaji: 'Okinawa' }
+];
+
+interface ShippingRate {
+  id: string;
+  prefecture_id: string;
+  kanji: string;
+  price: number;
+  delivery_time: string;
+  created_at?: string;
+  updated_at?: string;
+}
 
 const ShippingRates = () => {
-  const { data: shippingRates = [], isLoading } = useShippingRates();
-  const addShippingRate = useAddShippingRate();
-  const updateShippingRate = useUpdateShippingRate();
-  const deleteShippingRate = useDeleteShippingRate();
-  
+  const [shippingRates, setShippingRates] = useState<ShippingRate[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedRate, setSelectedRate] = useState<ShippingRate | null>(null);
   
   const [formData, setFormData] = useState({
-    prefecture: '',
-    rate: '',
-    estimated_days: ''
+    prefecture_id: '',
+    kanji: '',
+    price: '',
+    delivery_time: ''
   });
 
+  // Fetch shipping rates on component mount
+  useEffect(() => {
+    fetchShippingRates();
+  }, []);
+
+  const fetchShippingRates = async () => {
+    setIsLoading(true);
+    try {
+      const shippingRatesRef = collection(db, 'shipping_rates');
+      const snapshot = await getDocs(shippingRatesRef);
+      
+      const rates: ShippingRate[] = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as ShippingRate));
+      
+      setShippingRates(rates);
+    } catch (error) {
+      console.error('Error fetching shipping rates:', error);
+      toast({
+        title: "Error",
+        description: "Gagal memuat data ongkir",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const filteredRates = shippingRates.filter(rate => 
-    rate.prefecture.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    rate.prefecture_en.toLowerCase().includes(searchTerm.toLowerCase())
+    rate.kanji.includes(searchTerm) || 
+    japanPrefectures.find(p => p.id === rate.prefecture_id)?.romaji.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const availablePrefectures = prefectures.filter(
-    prefecture => !shippingRates.some(rate => rate.prefecture === prefecture.name)
-  );
+  const getAvailablePrefectures = () => {
+    const usedPrefectureIds = new Set(shippingRates.map(rate => rate.prefecture_id));
+    return japanPrefectures.filter(prefecture => !usedPrefectureIds.has(prefecture.id));
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handlePrefectureChange = (prefectureId: string) => {
+    const prefecture = japanPrefectures.find(p => p.id === prefectureId);
+    if (prefecture) {
+      setFormData(prev => ({
+        ...prev,
+        prefecture_id: prefectureId,
+        kanji: prefecture.kanji
+      }));
+    }
+  };
+
   const handleAddSubmit = async () => {
-    if (!formData.prefecture || !formData.rate) {
+    if (!formData.prefecture_id || !formData.kanji || !formData.price) {
       toast({
         title: "Error",
-        description: "Prefektur dan ongkos kirim wajib diisi",
+        description: "Prefektur dan ongkir wajib diisi",
         variant: "destructive"
       });
       return;
     }
 
-    const rate = parseInt(formData.rate);
-    if (isNaN(rate) || rate < 0) {
+    const price = parseInt(formData.price);
+    if (isNaN(price) || price < 0) {
       toast({
         title: "Error",
-        description: "Ongkos kirim harus berupa angka positif",
+        description: "Ongkir harus berupa angka positif",
         variant: "destructive"
       });
       return;
     }
 
     try {
-      const selectedPrefecture = prefectures.find(p => p.name === formData.prefecture);
-      if (!selectedPrefecture) {
-        throw new Error("Prefektur tidak valid");
+      // Check if prefecture already has a shipping rate
+      const shippingRatesRef = collection(db, 'shipping_rates');
+      const q = query(shippingRatesRef, where("prefecture_id", "==", formData.prefecture_id));
+      const snapshot = await getDocs(q);
+      
+      if (!snapshot.empty) {
+        toast({
+          title: "Error",
+          description: "Ongkir untuk prefektur ini sudah ada",
+          variant: "destructive"
+        });
+        return;
       }
 
-      await addShippingRate.mutateAsync({
-        prefecture: selectedPrefecture.name,
-        prefecture_en: selectedPrefecture.name_en,
-        rate: rate,
-        estimated_days: formData.estimated_days || '3-5 hari'
-      });
+      // Add new shipping rate
+      const newRate = {
+        prefecture_id: formData.prefecture_id,
+        kanji: formData.kanji,
+        price: price,
+        delivery_time: formData.delivery_time || '3-5 hari',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      await addDoc(collection(db, 'shipping_rates'), newRate);
 
       toast({
         title: "Berhasil",
-        description: `Ongkos kirim untuk ${selectedPrefecture.name} berhasil ditambahkan`,
+        description: `Ongkir untuk ${formData.kanji} berhasil ditambahkan`,
       });
 
       setIsAddDialogOpen(false);
       setFormData({
-        prefecture: '',
-        rate: '',
-        estimated_days: ''
+        prefecture_id: '',
+        kanji: '',
+        price: '',
+        delivery_time: ''
       });
+      fetchShippingRates();
     } catch (error) {
       console.error('Error adding shipping rate:', error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Gagal menambahkan ongkos kirim",
+        description: "Gagal menambahkan ongkir",
         variant: "destructive"
       });
     }
   };
 
   const handleEditSubmit = async () => {
-    if (!selectedRate || !formData.rate) {
+    if (!selectedRate || !formData.price) {
       toast({
         title: "Error",
-        description: "Ongkos kirim wajib diisi",
+        description: "Ongkir wajib diisi",
         variant: "destructive"
       });
       return;
     }
 
-    const rate = parseInt(formData.rate);
-    if (isNaN(rate) || rate < 0) {
+    const price = parseInt(formData.price);
+    if (isNaN(price) || price < 0) {
       toast({
         title: "Error",
-        description: "Ongkos kirim harus berupa angka positif",
+        description: "Ongkir harus berupa angka positif",
         variant: "destructive"
       });
       return;
     }
 
     try {
-      await updateShippingRate.mutateAsync({
-        id: selectedRate.id,
-        updates: {
-          rate: rate,
-          estimated_days: formData.estimated_days || selectedRate.estimated_days
-        }
+      const rateRef = doc(db, 'shipping_rates', selectedRate.id);
+      await updateDoc(rateRef, {
+        price: price,
+        delivery_time: formData.delivery_time || selectedRate.delivery_time,
+        updated_at: new Date().toISOString()
       });
 
       toast({
         title: "Berhasil",
-        description: `Ongkos kirim untuk ${selectedRate.prefecture} berhasil diperbarui`,
+        description: `Ongkir untuk ${selectedRate.kanji} berhasil diperbarui`,
       });
 
       setIsEditDialogOpen(false);
       setSelectedRate(null);
+      fetchShippingRates();
     } catch (error) {
       console.error('Error updating shipping rate:', error);
       toast({
         title: "Error",
-        description: "Gagal memperbarui ongkos kirim",
+        description: "Gagal memperbarui ongkir",
         variant: "destructive"
       });
     }
   };
 
-  const handleDelete = async (id: string, prefecture: string) => {
+  const handleDelete = async (id: string, kanji: string) => {
     try {
-      await deleteShippingRate.mutateAsync(id);
+      await deleteDoc(doc(db, 'shipping_rates', id));
       
       toast({
         title: "Berhasil",
-        description: `Ongkos kirim untuk ${prefecture} berhasil dihapus`,
+        description: `Ongkir untuk ${kanji} berhasil dihapus`,
       });
+      
+      fetchShippingRates();
     } catch (error) {
       console.error('Error deleting shipping rate:', error);
       toast({
         title: "Error",
-        description: "Gagal menghapus ongkos kirim",
+        description: "Gagal menghapus ongkir",
         variant: "destructive"
       });
     }
@@ -190,9 +307,10 @@ const ShippingRates = () => {
   const handleEditClick = (rate: ShippingRate) => {
     setSelectedRate(rate);
     setFormData({
-      prefecture: rate.prefecture,
-      rate: (rate.rate ?? 0).toString(),
-      estimated_days: rate.estimated_days
+      prefecture_id: rate.prefecture_id,
+      kanji: rate.kanji,
+      price: (rate.price ?? 0).toString(),
+      delivery_time: rate.delivery_time
     });
     setIsEditDialogOpen(true);
   };
@@ -236,16 +354,16 @@ const ShippingRates = () => {
                 <div className="space-y-2">
                   <Label htmlFor="prefecture">Prefektur</Label>
                   <Select 
-                    value={formData.prefecture} 
-                    onValueChange={(value) => handleInputChange('prefecture', value)}
+                    value={formData.prefecture_id} 
+                    onValueChange={handlePrefectureChange}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Pilih prefektur" />
                     </SelectTrigger>
                     <SelectContent>
-                      {availablePrefectures.map((prefecture) => (
-                        <SelectItem key={prefecture.name} value={prefecture.name}>
-                          {prefecture.name} ({prefecture.name_en})
+                      {getAvailablePrefectures().map((prefecture) => (
+                        <SelectItem key={prefecture.id} value={prefecture.id}>
+                          {prefecture.kanji} ({prefecture.romaji})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -253,23 +371,23 @@ const ShippingRates = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="rate">Ongkos Kirim (¥)</Label>
+                  <Label htmlFor="price">Ongkos Kirim (¥)</Label>
                   <Input
-                    id="rate"
+                    id="price"
                     type="number"
                     min="0"
-                    value={formData.rate}
-                    onChange={(e) => handleInputChange('rate', e.target.value)}
+                    value={formData.price}
+                    onChange={(e) => handleInputChange('price', e.target.value)}
                     placeholder="Contoh: 1500"
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="estimated_days">Estimasi Pengiriman (Opsional)</Label>
+                  <Label htmlFor="delivery_time">Estimasi Pengiriman</Label>
                   <Input
-                    id="estimated_days"
-                    value={formData.estimated_days}
-                    onChange={(e) => handleInputChange('estimated_days', e.target.value)}
+                    id="delivery_time"
+                    value={formData.delivery_time}
+                    onChange={(e) => handleInputChange('delivery_time', e.target.value)}
                     placeholder="Contoh: 3-5 hari"
                   />
                   <p className="text-xs text-gray-500">
@@ -284,10 +402,9 @@ const ShippingRates = () => {
                 </Button>
                 <Button 
                   onClick={handleAddSubmit}
-                  disabled={addShippingRate.isPending}
                   className="bg-green-600 hover:bg-green-700"
                 >
-                  {addShippingRate.isPending ? 'Menyimpan...' : 'Simpan'}
+                  Simpan
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -321,7 +438,7 @@ const ShippingRates = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Prefektur</TableHead>
-                      <TableHead>Prefektur (EN)</TableHead>
+                      <TableHead>Romaji</TableHead>
                       <TableHead>Ongkos Kirim</TableHead>
                       <TableHead>Estimasi</TableHead>
                       <TableHead>Terakhir Diperbarui</TableHead>
@@ -338,20 +455,22 @@ const ShippingRates = () => {
                     ) : (
                       filteredRates.map((rate) => (
                         <TableRow key={rate.id}>
-                          <TableCell className="font-medium">{rate.prefecture}</TableCell>
-                          <TableCell>{rate.prefecture_en}</TableCell>
-                          <TableCell className="font-semibold text-primary">
-                            {formatPrice(rate.rate)}
+                          <TableCell className="font-medium">{rate.kanji}</TableCell>
+                          <TableCell>
+                            {japanPrefectures.find(p => p.id === rate.prefecture_id)?.romaji || '-'}
                           </TableCell>
-                          <TableCell>{rate.estimated_days}</TableCell>
+                          <TableCell className="font-semibold text-primary">
+                            {formatPrice(rate.price)}
+                          </TableCell>
+                          <TableCell>{rate.delivery_time}</TableCell>
                           <TableCell className="text-sm text-gray-500">
-                            {new Date(rate.updated_at).toLocaleDateString('id-ID', {
+                            {rate.updated_at ? new Date(rate.updated_at).toLocaleDateString('id-ID', {
                               year: 'numeric',
                               month: 'short',
                               day: 'numeric',
                               hour: '2-digit',
                               minute: '2-digit'
-                            })}
+                            }) : '-'}
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end space-x-2">
@@ -373,14 +492,14 @@ const ShippingRates = () => {
                                   <AlertDialogHeader>
                                     <AlertDialogTitle>Hapus Ongkos Kirim</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      Apakah Anda yakin ingin menghapus ongkos kirim untuk {rate.prefecture}?
+                                      Apakah Anda yakin ingin menghapus ongkos kirim untuk {rate.kanji}?
                                       Tindakan ini tidak dapat dibatalkan.
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
                                     <AlertDialogCancel>Batal</AlertDialogCancel>
                                     <AlertDialogAction
-                                      onClick={() => handleDelete(rate.id, rate.prefecture)}
+                                      onClick={() => handleDelete(rate.id, rate.kanji)}
                                       className="bg-red-600 hover:bg-red-700"
                                     >
                                       Hapus
@@ -406,7 +525,7 @@ const ShippingRates = () => {
             <DialogHeader>
               <DialogTitle>Edit Ongkos Kirim</DialogTitle>
               <DialogDescription>
-                Perbarui ongkos kirim untuk {selectedRate?.prefecture}
+                Perbarui ongkos kirim untuk {selectedRate?.kanji}
               </DialogDescription>
             </DialogHeader>
             
@@ -415,30 +534,30 @@ const ShippingRates = () => {
                 <Label htmlFor="edit-prefecture">Prefektur</Label>
                 <Input
                   id="edit-prefecture"
-                  value={selectedRate?.prefecture || ''}
+                  value={selectedRate?.kanji || ''}
                   disabled
                   className="bg-gray-100"
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="edit-rate">Ongkos Kirim (¥)</Label>
+                <Label htmlFor="edit-price">Ongkos Kirim (¥)</Label>
                 <Input
-                  id="edit-rate"
+                  id="edit-price"
                   type="number"
                   min="0"
-                  value={formData.rate}
-                  onChange={(e) => handleInputChange('rate', e.target.value)}
+                  value={formData.price}
+                  onChange={(e) => handleInputChange('price', e.target.value)}
                   placeholder="Contoh: 1500"
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="edit-estimated_days">Estimasi Pengiriman</Label>
+                <Label htmlFor="edit-delivery_time">Estimasi Pengiriman</Label>
                 <Input
-                  id="edit-estimated_days"
-                  value={formData.estimated_days}
-                  onChange={(e) => handleInputChange('estimated_days', e.target.value)}
+                  id="edit-delivery_time"
+                  value={formData.delivery_time}
+                  onChange={(e) => handleInputChange('delivery_time', e.target.value)}
                   placeholder="Contoh: 3-5 hari"
                 />
               </div>
@@ -450,10 +569,9 @@ const ShippingRates = () => {
               </Button>
               <Button 
                 onClick={handleEditSubmit}
-                disabled={updateShippingRate.isPending}
                 className="bg-blue-600 hover:bg-blue-700"
               >
-                {updateShippingRate.isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
+                Simpan Perubahan
               </Button>
             </DialogFooter>
           </DialogContent>

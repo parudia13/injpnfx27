@@ -14,7 +14,8 @@ import { toast } from '@/hooks/use-toast';
 import { useCreateOrder } from '@/hooks/useOrders';
 import { useAuth } from '@/hooks/useFirebaseAuth';
 import InvoiceModal from '@/components/InvoiceModal';
-import { useShippingRateByPrefecture } from '@/hooks/useShippingRates';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/config/firebase';
 
 const checkoutSchema = z.object({
   fullName: z.string().min(2, 'Nama lengkap harus minimal 2 karakter'),
@@ -42,8 +43,8 @@ const CheckoutForm = ({ cart, total, onOrderComplete }: CheckoutFormProps) => {
   const { user } = useAuth();
   const createOrder = useCreateOrder();
   const [selectedPrefecture, setSelectedPrefecture] = useState<string>('');
-  const { data: shippingRate } = useShippingRateByPrefecture(selectedPrefecture);
-  const [shippingFee, setShippingFee] = useState<number | null>(null);
+  const [shippingRate, setShippingRate] = useState<{price: number, delivery_time: string} | null>(null);
+  const [isLoadingRate, setIsLoadingRate] = useState(false);
 
   const form = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
@@ -59,17 +60,65 @@ const CheckoutForm = ({ cart, total, onOrderComplete }: CheckoutFormProps) => {
     },
   });
 
-  // Update shipping fee when prefecture changes
+  // Fetch shipping rate when prefecture changes
   useEffect(() => {
-    if (shippingRate) {
-      setShippingFee(shippingRate.rate);
-    } else {
-      setShippingFee(null);
-    }
-  }, [shippingRate]);
+    const fetchShippingRate = async () => {
+      if (!selectedPrefecture) {
+        setShippingRate(null);
+        return;
+      }
+
+      setIsLoadingRate(true);
+      try {
+        // Find the prefecture object to get the ID
+        const prefectureObj = prefectures.find(p => p.name === selectedPrefecture);
+        if (!prefectureObj) {
+          setShippingRate(null);
+          return;
+        }
+
+        // Convert prefecture name to ID format (lowercase, no spaces)
+        const prefectureId = prefectureObj.name_en.toLowerCase().replace(/\s+/g, '');
+        
+        // Query Firestore for shipping rate
+        const shippingRatesRef = collection(db, 'shipping_rates');
+        const q = query(shippingRatesRef, where('prefecture_id', '==', prefectureId));
+        const snapshot = await getDocs(q);
+        
+        if (snapshot.empty) {
+          // Try alternative query with kanji
+          const q2 = query(shippingRatesRef, where('kanji', '==', selectedPrefecture));
+          const snapshot2 = await getDocs(q2);
+          
+          if (snapshot2.empty) {
+            setShippingRate(null);
+          } else {
+            const data = snapshot2.docs[0].data();
+            setShippingRate({
+              price: data.price,
+              delivery_time: data.delivery_time
+            });
+          }
+        } else {
+          const data = snapshot.docs[0].data();
+          setShippingRate({
+            price: data.price,
+            delivery_time: data.delivery_time
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching shipping rate:', error);
+        setShippingRate(null);
+      } finally {
+        setIsLoadingRate(false);
+      }
+    };
+
+    fetchShippingRate();
+  }, [selectedPrefecture]);
 
   // Calculate total with shipping
-  const totalWithShipping = total + (shippingFee || 0);
+  const totalWithShipping = total + (shippingRate?.price || 0);
 
   const generateWhatsAppMessage = (data: CheckoutFormData) => {
     const productList = cart.map(item => {
@@ -80,8 +129,8 @@ const CheckoutForm = ({ cart, total, onOrderComplete }: CheckoutFormProps) => {
       return `- ${item.name}${variants ? ` | Varian: ${variants}` : ''} | Qty: ${item.quantity} | ¥${(item.price * item.quantity).toLocaleString()}`;
     }).join('\n');
 
-    const shippingInfo = shippingFee 
-      ? `\n*ONGKOS KIRIM: ¥${shippingFee.toLocaleString()}*` 
+    const shippingInfo = shippingRate 
+      ? `\n*ONGKOS KIRIM: ¥${shippingRate.price.toLocaleString()}* (Estimasi: ${shippingRate.delivery_time})` 
       : '';
 
     const message = `Halo Admin Injapan Food
@@ -120,6 +169,15 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
       return;
     }
 
+    if (selectedPrefecture && !shippingRate) {
+      toast({
+        title: "Ongkir Belum Tersedia",
+        description: "Ongkir untuk prefektur ini belum diatur. Silakan pilih prefektur lain atau hubungi admin.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -144,7 +202,8 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
           notes: data.notes
         },
         userId: user?.uid,
-        shipping_fee: shippingFee || 0
+        shipping_fee: shippingRate?.price || 0,
+        shipping_estimate: shippingRate?.delivery_time || '3-5 hari'
       };
 
       const result = await createOrder.mutateAsync({
@@ -152,7 +211,8 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
         totalPrice: orderData.totalPrice,
         customerInfo: orderData.customerInfo,
         userId: orderData.userId,
-        shipping_fee: orderData.shipping_fee
+        shipping_fee: orderData.shipping_fee,
+        shipping_estimate: orderData.shipping_estimate
       });
 
       // Create order object for invoice
@@ -175,7 +235,8 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
           country: 'Japan'
         },
         payment_method: 'cod',
-        shipping_fee: shippingFee || 0
+        shipping_fee: shippingRate?.price || 0,
+        shipping_estimate: shippingRate?.delivery_time || '3-5 hari'
       };
 
       setCreatedOrder(newOrder);
@@ -369,8 +430,13 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
             <div className="flex justify-between items-center mb-2">
               <span className="font-medium">Ongkos Kirim:</span>
               {selectedPrefecture ? (
-                shippingFee !== null ? (
-                  <span>¥{shippingFee.toLocaleString()}</span>
+                isLoadingRate ? (
+                  <span className="text-gray-500">Memuat...</span>
+                ) : shippingRate ? (
+                  <div className="text-right">
+                    <div>¥{shippingRate.price.toLocaleString()}</div>
+                    <div className="text-xs text-gray-500">Estimasi: {shippingRate.delivery_time}</div>
+                  </div>
                 ) : (
                   <span className="text-yellow-600 text-sm">Ongkir untuk prefektur ini belum diatur</span>
                 )
@@ -387,7 +453,7 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
           <div className="pt-4 border-t">
             <Button
               type="submit"
-              disabled={isSubmitting || cart.length === 0 || (selectedPrefecture && shippingFee === null)}
+              disabled={isSubmitting || cart.length === 0 || (selectedPrefecture && !shippingRate)}
               className="w-full bg-green-600 hover:bg-green-700 text-white py-3 text-lg font-semibold flex items-center justify-center space-x-2"
             >
               <MessageCircle className="w-5 h-5" />
@@ -399,7 +465,7 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
               Pesanan akan disimpan di riwayat Anda dan dikirim ke WhatsApp
             </p>
             
-            {selectedPrefecture && shippingFee === null && (
+            {selectedPrefecture && !shippingRate && (
               <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-sm text-yellow-700">
                   Ongkir untuk prefektur {selectedPrefecture} belum diatur. Silakan pilih prefektur lain atau hubungi admin.

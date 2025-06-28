@@ -56,6 +56,11 @@ const AdminSidebar = () => {
       href: '/admin/import-export',
       icon: Upload,
     },
+    {
+      title: 'Recycle Bin',
+      href: '/admin/recycle-bin',
+      icon: Trash2,
+    }
   ];
 
   return (
