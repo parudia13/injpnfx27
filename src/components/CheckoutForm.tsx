@@ -16,6 +16,8 @@ import { useAuth } from '@/hooks/useFirebaseAuth';
 import InvoiceModal from '@/components/InvoiceModal';
 import { useShippingRateByPrefecture } from '@/hooks/useShippingRates';
 import PaymentProofUploader from '@/components/PaymentProofUploader';
+import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
+import PaymentMethodInfo from '@/components/PaymentMethodInfo';
 
 const checkoutSchema = z.object({
   fullName: z.string().min(2, 'Nama lengkap harus minimal 2 karakter'),
@@ -64,6 +66,12 @@ const CheckoutForm = ({ cart, total, onOrderComplete }: CheckoutFormProps) => {
     },
   });
 
+  // Get the current payment method
+  const paymentMethod = form.watch('paymentMethod');
+  
+  // Calculate total with shipping
+  const totalWithShipping = total + (shippingFee || 0);
+
   // Update shipping fee when prefecture changes
   useEffect(() => {
     if (shippingRate) {
@@ -74,9 +82,6 @@ const CheckoutForm = ({ cart, total, onOrderComplete }: CheckoutFormProps) => {
       setShippingFee(null);
     }
   }, [shippingRate]);
-
-  // Calculate total with shipping
-  const totalWithShipping = total + (shippingFee || 0);
 
   const generateWhatsAppMessage = (data: CheckoutFormData) => {
     const productList = cart.map(item => {
@@ -89,6 +94,14 @@ const CheckoutForm = ({ cart, total, onOrderComplete }: CheckoutFormProps) => {
 
     const shippingInfo = shippingFee 
       ? `\n*ONGKOS KIRIM: ¥${shippingFee.toLocaleString()}*` 
+      : '';
+
+    // Get currency conversion info
+    const { convertedRupiah } = useCurrencyConverter(totalWithShipping, data.paymentMethod);
+    
+    // Add Rupiah conversion if applicable
+    const rupiahInfo = convertedRupiah && data.paymentMethod === 'Bank Transfer (Rupiah)'
+      ? `\n*TOTAL DALAM RUPIAH: Rp${convertedRupiah.toLocaleString('id-ID')}*`
       : '';
 
     const message = `Halo Admin Injapan Food
@@ -111,7 +124,7 @@ ${data.paymentMethod}
 ${productList}
 
 *SUBTOTAL BELANJA: ¥${total.toLocaleString()}*${shippingInfo}
-*TOTAL BELANJA: ¥${totalWithShipping.toLocaleString()}*
+*TOTAL BELANJA: ¥${totalWithShipping.toLocaleString()}*${rupiahInfo}
 
 ${data.notes ? `Catatan: ${data.notes}` : ''}
 
@@ -407,6 +420,14 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
               </FormItem>
             )}
           />
+
+          {/* Payment Method Info */}
+          {paymentMethod && (
+            <PaymentMethodInfo 
+              paymentMethod={paymentMethod} 
+              totalAmount={totalWithShipping} 
+            />
+          )}
 
           {/* Order Summary with Shipping Fee */}
           <div className="border-t border-b py-4 my-4 space-y-2">
