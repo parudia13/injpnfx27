@@ -15,7 +15,6 @@ import { useCreateOrder } from '@/hooks/useOrders';
 import { useAuth } from '@/hooks/useFirebaseAuth';
 import InvoiceModal from '@/components/InvoiceModal';
 import { useShippingRateByPrefecture } from '@/hooks/useShippingRates';
-import PaymentProofUploader from '@/components/PaymentProofUploader';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import PaymentMethodInfo from '@/components/PaymentMethodInfo';
 
@@ -43,8 +42,6 @@ const CheckoutForm = ({ cart, total, onOrderComplete }: CheckoutFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showInvoice, setShowInvoice] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
-  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
-  const [showPaymentUploader, setShowPaymentUploader] = useState(false);
   const { user } = useAuth();
   const createOrder = useCreateOrder();
   const [selectedPrefecture, setSelectedPrefecture] = useState<string>('');
@@ -179,8 +176,6 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
         shipping_fee: orderData.shipping_fee
       });
 
-      setCreatedOrderId(orderId);
-
       // Create order object for invoice
       const newOrder: Order = {
         id: orderId,
@@ -210,17 +205,24 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
       // Show success message
       toast({
         title: "Pesanan Berhasil Dibuat",
-        description: "Pesanan telah disimpan di riwayat Anda. Silakan unggah bukti pembayaran.",
+        description: "Pesanan telah disimpan di riwayat Anda. Silakan lanjutkan ke WhatsApp untuk konfirmasi.",
       });
 
       // Show invoice first
       setShowInvoice(true);
       
-      // Show payment uploader after invoice is closed
+      // Open WhatsApp after a short delay
       setTimeout(() => {
-        setShowPaymentUploader(true);
-      }, 500);
-
+        const whatsappMessage = generateWhatsAppMessage(data);
+        const phoneNumber = '+817084894699'; // Replace with your actual WhatsApp number
+        const whatsappUrl = `https://wa.me/${phoneNumber}?text=${whatsappMessage}`;
+        window.open(whatsappUrl, '_blank');
+        
+        // Clear form and cart
+        form.reset();
+        onOrderComplete();
+      }, 1000);
+      
     } catch (error) {
       console.error('Error creating order:', error);
       toast({
@@ -231,19 +233,6 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handlePaymentUploaded = () => {
-    // Clear form and cart
-    form.reset();
-    onOrderComplete();
-    
-    // Open WhatsApp after payment proof is uploaded
-    const data = form.getValues();
-    const whatsappMessage = generateWhatsAppMessage(data);
-    const phoneNumber = '+817084894699'; // Replace with your actual WhatsApp number
-    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${whatsappMessage}`;
-    window.open(whatsappUrl, '_blank');
   };
 
   return (
@@ -463,13 +452,13 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
               disabled={isSubmitting || cart.length === 0 || (selectedPrefecture && shippingFee === null)}
               className="w-full bg-green-600 hover:bg-green-700 text-white py-3 text-lg font-semibold flex items-center justify-center space-x-2"
             >
-              <CreditCard className="w-5 h-5" />
+              <MessageCircle className="w-5 h-5" />
               <span>
-                {isSubmitting ? 'Memproses...' : 'Buat Pesanan'}
+                {isSubmitting ? 'Memproses...' : 'Pesan via WhatsApp'}
               </span>
             </Button>
             <p className="text-center text-sm text-gray-600 mt-2">
-              Pesanan akan disimpan di riwayat Anda dan Anda perlu mengunggah bukti pembayaran
+              Pesanan akan disimpan di riwayat Anda dan dikirim ke WhatsApp
             </p>
             
             {selectedPrefecture && shippingFee === null && (
@@ -490,29 +479,6 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
           onClose={() => setShowInvoice(false)}
           order={createdOrder}
         />
-      )}
-
-      {/* Payment Proof Uploader Modal */}
-      {showPaymentUploader && createdOrderId && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">Unggah Bukti Pembayaran</h2>
-            <p className="text-gray-600 mb-4">
-              Silakan unggah bukti pembayaran Anda untuk memverifikasi pesanan
-            </p>
-            
-            <PaymentProofUploader 
-              orderId={createdOrderId} 
-              onSuccess={handlePaymentUploaded}
-            />
-            
-            <div className="mt-4 pt-4 border-t">
-              <p className="text-sm text-gray-500 text-center">
-                Setelah mengunggah bukti pembayaran, Anda akan diarahkan ke WhatsApp untuk menyelesaikan pesanan
-              </p>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

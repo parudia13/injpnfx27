@@ -60,9 +60,13 @@ const PaymentMethodInfo = ({ paymentMethod, totalAmount }: PaymentMethodInfoProp
                   </div>
                 </div>
                 
-                {error && (
+                {error ? (
                   <p className="text-xs text-yellow-600 mt-2">
                     Failed to get exchange rate. Using fallback rate. Kurs yang ditampilkan adalah perkiraan.
+                  </p>
+                ) : (
+                  <p className="text-xs text-blue-600 mt-1">
+                    *Kurs otomatis berdasarkan nilai tukar saat ini.
                   </p>
                 )}
                 

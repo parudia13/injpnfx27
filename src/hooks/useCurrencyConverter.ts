@@ -19,7 +19,7 @@ export const useCurrencyConverter = (yenAmount: number, paymentMethod: string) =
     
     try {
       // Try primary API first
-      const response = await fetch('https://api.exchangerate.host/convert?from=JPY&to=IDR');
+      const response = await fetch('https://api.exchangerate.host/latest?base=JPY&symbols=IDR');
       
       if (!response.ok) {
         throw new Error('Primary API failed');
@@ -27,8 +27,8 @@ export const useCurrencyConverter = (yenAmount: number, paymentMethod: string) =
       
       const data = await response.json();
       
-      if (data.success) {
-        const rate = data.info.rate;
+      if (data.rates && data.rates.IDR) {
+        const rate = data.rates.IDR;
         setExchangeRate(rate);
         const rupiah = yenAmount * rate;
         setConvertedRupiah(Math.round(rupiah));
