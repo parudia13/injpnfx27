@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Filter, Eye, CheckCircle, XCircle, AlertTriangle, Calendar, CreditCard, User, FileImage } from 'lucide-react';
+import { Search, Filter, Eye, CheckCircle, XCircle, AlertTriangle, Calendar, CreditCard, User, FileImage, Upload, RefreshCw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { collection, getDocs, query, where, orderBy, doc, updateDoc, getFirestore } from 'firebase/firestore';
@@ -61,9 +61,9 @@ const PaymentVerification = () => {
   // Filter payment proofs based on search term and status filter
   const filteredPaymentProofs = paymentProofs.filter(proof => {
     const matchesSearch = 
-      proof.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      proof.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      proof.invoice_id.toLowerCase().includes(searchTerm.toLowerCase());
+      proof.nama?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      proof.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      proof.invoice_id?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || proof.status === statusFilter;
     
@@ -197,6 +197,14 @@ const PaymentVerification = () => {
             <h1 className="text-3xl font-bold text-gray-900">Verifikasi Pembayaran</h1>
             <p className="text-gray-600">Kelola dan verifikasi bukti pembayaran dari pelanggan</p>
           </div>
+          <Button 
+            variant="outline" 
+            onClick={() => refetch()}
+            className="flex items-center space-x-2"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh Data
+          </Button>
         </div>
 
         <Card className="mb-6">
@@ -250,18 +258,35 @@ const PaymentVerification = () => {
                 <Button onClick={() => refetch()}>Coba Lagi</Button>
               </div>
             ) : filteredPaymentProofs.length === 0 ? (
-              <div className="text-center py-8">
-                <FileImage className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-lg font-medium text-gray-900 mb-2">
+              <div className="text-center py-12">
+                <div className="bg-gray-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <FileImage className="w-12 h-12 text-gray-400" />
+                </div>
+                <h3 className="text-xl font-medium text-gray-900 mb-2">
                   {paymentProofs.length === 0 
                     ? 'Belum ada bukti pembayaran' 
                     : 'Tidak ada bukti pembayaran yang sesuai filter'}
-                </p>
-                <p className="text-gray-600">
+                </h3>
+                <p className="text-gray-600 mb-6 max-w-md mx-auto">
                   {paymentProofs.length === 0 
                     ? 'Bukti pembayaran yang dikirim pelanggan akan muncul di sini' 
                     : 'Coba ubah filter atau kata kunci pencarian'}
                 </p>
+                
+                {paymentProofs.length === 0 && (
+                  <div className="max-w-md mx-auto bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <h4 className="font-medium text-blue-800 mb-2 flex items-center">
+                      <Upload className="w-4 h-4 mr-2" />
+                      Informasi Upload Bukti Pembayaran
+                    </h4>
+                    <p className="text-sm text-blue-700 mb-2">
+                      Pelanggan perlu mengupload bukti pembayaran saat checkout dengan metode transfer bank.
+                    </p>
+                    <p className="text-sm text-blue-700">
+                      Bukti pembayaran yang diupload akan otomatis muncul di halaman ini untuk diverifikasi.
+                    </p>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto">
