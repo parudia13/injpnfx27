@@ -6,7 +6,6 @@ import Footer from '@/components/Footer';
 import { useProducts } from '@/hooks/useProducts';
 import { useLanguage } from '@/hooks/useLanguage';
 import { getCategoriesWithVariants, getCategoryIcon } from '@/utils/categoryVariants';
-import InstallPWAButton from '@/components/InstallPWAButton';
 
 const Index = () => {
   const { data: products = [], isLoading: productsLoading, isError: productsError } = useProducts();
@@ -229,7 +228,6 @@ const Index = () => {
         </div>
       </section>
 
-      <InstallPWAButton />
       <Footer />
     </div>
   );

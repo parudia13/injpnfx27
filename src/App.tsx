@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/hooks/useFirebaseAuth';
 import { LanguageProvider } from '@/hooks/useLanguage';
 import OfflineNotice from '@/components/OfflineNotice';
+import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 import Index from '@/pages/Index';
 import Products from '@/pages/Products';
 import ProductDetail from '@/pages/ProductDetail';
@@ -79,6 +80,7 @@ function App() {
             </Routes>
             <Toaster />
             <OfflineNotice />
+            <PWAInstallPrompt />
           </Router>
         </LanguageProvider>
       </AuthProvider>

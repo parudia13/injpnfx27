@@ -23,6 +23,7 @@ const Header = ({ shouldAnimateCart = false }: HeaderProps) => {
   const { 
     isInstallable, 
     isIOSDevice, 
+    isStandalone,
     showIOSInstructions, 
     setShowIOSInstructions,
     handleInstallClick 
@@ -52,6 +53,9 @@ const Header = ({ shouldAnimateCart = false }: HeaderProps) => {
     { path: '/products', label: t('nav.products') },
     { path: '/how-to-buy', label: t('nav.howToBuy') },
   ];
+
+  // Only show install button if app is installable and not already installed
+  const showInstallButton = (isInstallable || isIOSDevice) && !isStandalone;
 
   return (
     <header className="bg-white shadow-md sticky top-0 z-50">
@@ -88,7 +92,7 @@ const Header = ({ shouldAnimateCart = false }: HeaderProps) => {
             ))}
             
             {/* PWA Install Button for Desktop */}
-            {(isInstallable || isIOSDevice) && (
+            {showInstallButton && (
               <div
                 onClick={handleInstallClick}
                 className="font-medium text-gray-700 hover:text-primary transition-colors duration-200 cursor-pointer flex items-center"
@@ -179,7 +183,7 @@ const Header = ({ shouldAnimateCart = false }: HeaderProps) => {
               )}
               
               {/* PWA Install Button for Mobile */}
-              {(isInstallable || isIOSDevice) && (
+              {showInstallButton && (
                 <div
                   onClick={handleInstallClick}
                   className="text-gray-700 hover:text-primary font-medium text-left cursor-pointer flex items-center"
