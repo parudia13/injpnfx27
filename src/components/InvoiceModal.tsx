@@ -38,17 +38,60 @@ const InvoiceModal = ({ isOpen, onClose, order }: InvoiceModalProps) => {
         <head>
           <title>Invoice ${invoiceNumber}</title>
           <style>
+            @page {
+              size: A4;
+              margin: 0;
+            }
             body { 
               font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
               margin: 0; 
-              padding: 20px; 
+              padding: 0; 
               background: white;
+              width: 210mm;
+              height: 297mm;
             }
-            .max-w-4xl { max-width: 56rem; }
+            .print-container {
+              width: 100%;
+              padding: 10mm;
+              box-sizing: border-box;
+            }
+            .page-break-avoid {
+              page-break-inside: avoid;
+            }
+            .invoice-header {
+              margin-bottom: 10px;
+            }
+            .invoice-table {
+              font-size: 10px;
+              width: 100%;
+              border-collapse: collapse;
+            }
+            .invoice-table th, .invoice-table td {
+              padding: 4px 8px;
+              border: 1px solid #d1d5db;
+            }
+            .invoice-footer {
+              margin-top: 10px;
+              font-size: 10px;
+            }
+            .invoice-total {
+              margin-top: 10px;
+              page-break-inside: avoid;
+            }
+            .compact-text {
+              font-size: 10px;
+              line-height: 1.2;
+            }
+            .compact-address {
+              max-width: 150px;
+              word-break: break-word;
+            }
+            /* Additional print-specific styles */
+            .max-w-4xl { max-width: 100%; }
             .mx-auto { margin-left: auto; margin-right: auto; }
             .bg-white { background-color: white; }
             .p-8 { padding: 2rem; }
-            .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+            .shadow-lg { box-shadow: none; }
             .border-b-2 { border-bottom-width: 2px; }
             .border-gray-200 { border-color: #e5e7eb; }
             .pb-6 { padding-bottom: 1.5rem; }
@@ -66,7 +109,7 @@ const InvoiceModal = ({ isOpen, onClose, order }: InvoiceModalProps) => {
             .w-16 { width: 4rem; }
             .h-16 { width: 4rem; }
             .w-24 { width: 6rem; }
-            .w-80 { width: 20rem; }
+            .w-64 { width: 16rem; }
             .w-full { width: 100%; }
             .rounded-lg { border-radius: 0.5rem; }
             .overflow-hidden { overflow: hidden; }
@@ -99,7 +142,7 @@ const InvoiceModal = ({ isOpen, onClose, order }: InvoiceModalProps) => {
             .mr-2 { margin-right: 0.5rem; }
             .grid { display: grid; }
             .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .gap-8 { gap: 2rem; }
+            .gap-4 { gap: 1rem; }
             .border { border-width: 1px; }
             .border-t { border-top-width: 1px; }
             .border-t-2 { border-top-width: 2px; }
@@ -122,17 +165,12 @@ const InvoiceModal = ({ isOpen, onClose, order }: InvoiceModalProps) => {
             .border-green-200 { border-color: #bbf7d0; }
             .overflow-x-auto { overflow-x: auto; }
             .font-mono { font-family: ui-monospace, SFMono-Regular, monospace; }
-            table { width: 100%; border-collapse: collapse; }
-            th, td { border: 1px solid #d1d5db; padding: 0.75rem; }
-            th { background-color: #f9fafb; font-weight: 600; }
-            @media print {
-              body { margin: 0; padding: 0; }
-              .shadow-lg { box-shadow: none; }
-            }
           </style>
         </head>
         <body>
-          ${printContent.innerHTML}
+          <div class="print-container">
+            ${printContent.innerHTML}
+          </div>
         </body>
       </html>
     `);

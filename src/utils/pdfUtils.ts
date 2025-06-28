@@ -15,6 +15,7 @@ export const generateInvoicePDF = async (element: HTMLElement | null, invoiceNum
       useCORS: true,
       allowTaint: true,
       backgroundColor: '#ffffff',
+      logging: false,
       width: element.scrollWidth,
       height: element.scrollHeight,
       scrollX: 0,
@@ -23,28 +24,24 @@ export const generateInvoicePDF = async (element: HTMLElement | null, invoiceNum
 
     const imgData = canvas.toDataURL('image/png');
     
-    // Calculate PDF dimensions
-    const imgWidth = 210; // A4 width in mm
-    const pageHeight = 295; // A4 height in mm
+    // Calculate PDF dimensions - A4 size
+    const pdfWidth = 210; // A4 width in mm
+    const pdfHeight = 297; // A4 height in mm
+    
+    // Calculate image dimensions to fit A4
+    const imgWidth = pdfWidth;
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    let heightLeft = imgHeight;
-
-    // Create PDF
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    let position = 0;
-
-    // Add first page
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
-
-    // Add additional pages if needed
-    while (heightLeft >= 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-    }
-
+    
+    // Create PDF with A4 dimensions
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+    
+    // Add image to PDF, centered and scaled to fit
+    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, Math.min(imgHeight, pdfHeight));
+    
     // Download the PDF
     pdf.save(`Invoice-${invoiceNumber}.pdf`);
   } catch (error) {
