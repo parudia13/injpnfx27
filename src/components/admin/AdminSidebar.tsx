@@ -7,7 +7,8 @@ import {
   CheckCircle,
   Upload,
   Trash2,
-  Truck
+  Truck,
+  CreditCard
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +26,12 @@ const AdminSidebar = () => {
       href: '/admin/order-confirmation',
       icon: CheckCircle,
       description: 'Pending orders'
+    },
+    {
+      title: 'Verifikasi Pembayaran',
+      href: '/admin/payment-verification',
+      icon: CreditCard,
+      description: 'Payment proofs'
     },
     {
       title: 'Produk',
