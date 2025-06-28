@@ -42,7 +42,7 @@ const CheckoutForm = ({ cart, total, onOrderComplete }: CheckoutFormProps) => {
   const { user } = useAuth();
   const createOrder = useCreateOrder();
   const [selectedPrefecture, setSelectedPrefecture] = useState<string>('');
-  const { data: shippingRate } = useShippingRateByPrefecture(selectedPrefecture);
+  const { data: shippingRate, isLoading: isLoadingShippingRate } = useShippingRateByPrefecture(selectedPrefecture);
   const [shippingFee, setShippingFee] = useState<number | null>(null);
 
   const form = useForm<CheckoutFormData>({
@@ -62,8 +62,10 @@ const CheckoutForm = ({ cart, total, onOrderComplete }: CheckoutFormProps) => {
   // Update shipping fee when prefecture changes
   useEffect(() => {
     if (shippingRate) {
+      console.log('Setting shipping fee from rate:', shippingRate);
       setShippingFee(shippingRate.price);
     } else {
+      console.log('No shipping rate found, setting fee to null');
       setShippingFee(null);
     }
   }, [shippingRate]);
@@ -273,6 +275,7 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
                   <Select 
                     onValueChange={(value) => {
                       field.onChange(value);
+                      console.log('Selected prefecture:', value);
                       setSelectedPrefecture(value.toLowerCase());
                     }} 
                     defaultValue={field.value}
@@ -284,7 +287,7 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
                     </FormControl>
                     <SelectContent className="bg-white border shadow-lg max-h-60 z-50">
                       {prefectures.map((prefecture) => (
-                        <SelectItem key={prefecture.name} value={prefecture.name_en}>
+                        <SelectItem key={prefecture.name} value={prefecture.name_en.toLowerCase()}>
                           {prefecture.name} ({prefecture.name_en})
                         </SelectItem>
                       ))}
@@ -369,7 +372,9 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
             <div className="flex justify-between items-center mb-2">
               <span className="font-medium">Ongkos Kirim:</span>
               {selectedPrefecture ? (
-                shippingFee !== null ? (
+                isLoadingShippingRate ? (
+                  <span className="text-gray-500">Memuat...</span>
+                ) : shippingFee !== null ? (
                   <span>¥{shippingFee.toLocaleString()}</span>
                 ) : (
                   <span className="text-yellow-600 text-sm">Ongkir untuk prefektur ini belum diatur</span>
