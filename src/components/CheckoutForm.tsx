@@ -17,6 +17,8 @@ import InvoiceModal from '@/components/InvoiceModal';
 import { useShippingRateByPrefecture } from '@/hooks/useShippingRates';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useUploadPaymentProof } from '@/hooks/usePaymentProofs';
+import { updatePaymentProofInvoiceId } from '@/services/paymentService';
 
 const checkoutSchema = z.object({
   fullName: z.string().min(2, 'Nama lengkap harus minimal 2 karakter'),
@@ -53,6 +55,8 @@ const CheckoutForm = ({ cart, total, onOrderComplete }: CheckoutFormProps) => {
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
   const { user } = useAuth();
   const createOrder = useCreateOrder();
+  const uploadPaymentProofMutation = useUploadPaymentProof();
+  const [uploadedPaymentProofId, setUploadedPaymentProofId] = useState<string | null>(null);
   const [selectedPrefecture, setSelectedPrefecture] = useState<string>('');
   const { data: shippingRate, isLoading: isLoadingShippingRate } = useShippingRateByPrefecture(selectedPrefecture);
   const [shippingFee, setShippingFee] = useState<number | null>(null);
@@ -182,9 +186,41 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
     }
 
     setIsSubmitting(true);
+    let paymentProofDocId: string | null = null; // Initialize paymentProofDocId
 
     try {
-      // Create order in Firebase/Firestore
+      // Step 1: Upload payment proof if applicable
+      if (selectedPaymentMethod !== 'COD (Cash on Delivery)' && paymentProofFile) {
+        try {
+          paymentProofDocId = await uploadPaymentProofMutation.mutateAsync({
+            file: paymentProofFile,
+            paymentData: {
+              user_id: user?.uid,
+              nama: data.fullName,
+              email: data.email,
+              invoice_id: 'temp_invoice_id', // Placeholder, will be updated later
+              metode_pembayaran: data.paymentMethod,
+              status: 'Menunggu'
+            }
+          });
+          setUploadedPaymentProofId(paymentProofDocId); // Store the ID
+          toast({
+            title: "Bukti Pembayaran Diunggah",
+            description: "Bukti pembayaran Anda berhasil diunggah. Menunggu konfirmasi pesanan.",
+          });
+        } catch (uploadError) {
+          console.error('Error uploading payment proof:', uploadError);
+          toast({
+            title: "Gagal Unggah Bukti Pembayaran",
+            description: "Terjadi kesalahan saat mengunggah bukti pembayaran. Silakan coba lagi.",
+            variant: "destructive",
+          });
+          setIsSubmitting(false);
+          return; // Stop submission if payment proof upload fails
+        }
+      }
+
+      // Step 2: Create order in Firebase/Firestore
       const orderData = {
         items: cart.map(item => ({
           name: item.name,
@@ -210,7 +246,7 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
         shipping_fee: shippingFee || 0
       };
 
-      const result = await createOrder.mutateAsync({
+      const orderId = await createOrder.mutateAsync({
         items: orderData.items,
         totalPrice: orderData.totalPrice,
         customerInfo: orderData.customerInfo,
@@ -218,9 +254,18 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
         shipping_fee: orderData.shipping_fee
       });
 
+      // Step 3: Update payment proof with actual invoice ID if it was uploaded
+      if (paymentProofDocId) {
+        await updatePaymentProofInvoiceId(paymentProofDocId, orderId);
+        toast({
+          title: "Bukti Pembayaran Diperbarui",
+          description: "Bukti pembayaran Anda telah ditautkan dengan pesanan.",
+        });
+      }
+
       // Create order object for invoice
       const newOrder: Order = {
-        id: result,
+        id: orderId, // Use the actual orderId
         user_id: user?.uid || '',
         items: orderData.items,
         total_price: orderData.totalPrice,

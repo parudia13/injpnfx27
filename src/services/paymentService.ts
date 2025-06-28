@@ -163,3 +163,17 @@ export const rejectPaymentProof = async (paymentId: string, reason: string): Pro
     throw error;
   }
 };
+
+export const updatePaymentProofInvoiceId = async (paymentProofId: string, invoiceId: string): Promise<void> => {
+  try {
+    const paymentRef = doc(db, PAYMENT_PROOFS_COLLECTION, paymentProofId);
+    await updateDoc(paymentRef, {
+      invoice_id: invoiceId,
+      updated_at: new Date().toISOString() // Add updated_at for consistency
+    });
+    console.log(`Payment proof ${paymentProofId} updated with invoice ID ${invoiceId}`);
+  } catch (error) {
+    console.error('Error updating payment proof invoice ID:', error);
+    throw error;
+  }
+};

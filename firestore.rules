@@ -33,5 +33,12 @@ service cloud.firestore {
       allow read: if true;
       allow write, create, update, delete: if request.auth != null;
     }
+
+    // Allow authenticated users to create payment proofs
+    // Admins can read, write, delete all payment proofs
+    match /payment_proofs/{paymentProofId} {
+      allow create: if request.auth != null;
+      allow read, write, update, delete: if request.auth != null;
+    }
   }
 }
