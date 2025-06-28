@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useFirebaseAuth';
 import { Button } from '@/components/ui/button';
@@ -20,6 +19,9 @@ const AuthForm = () => {
     const errorCode = error?.code || '';
     
     switch (errorCode) {
+      case 'auth/network-request-failed':
+        return 'Tidak dapat terhubung ke server. Silakan periksa koneksi internet Anda dan coba lagi. Jika masalah berlanjut, periksa pengaturan firewall atau proxy Anda.';
+      
       case 'auth/invalid-credential':
       case 'auth/wrong-password':
       case 'auth/user-not-found':
