@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { MessageCircle, FileText, CreditCard, AlertTriangle } from 'lucide-react';
+import { MessageCircle, FileText, CreditCard, AlertTriangle, Copy, Check, Upload, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,6 +28,15 @@ const checkoutSchema = z.object({
   address: z.string().min(10, 'Alamat lengkap harus minimal 10 karakter'),
   notes: z.string().optional(),
   paymentMethod: z.string().min(1, 'Silakan pilih metode pembayaran'),
+  paymentProof: z.instanceof(FileList).optional().refine(
+    (files) => {
+      if (!files || files.length === 0) return true;
+      return Array.from(files).every(file => file.size <= 10 * 1024 * 1024); // 10MB limit
+    },
+    {
+      message: 'File terlalu besar. Maksimal 10MB',
+    }
+  ),
 });
 
 type CheckoutFormData = z.infer<typeof checkoutSchema>;
@@ -48,6 +57,10 @@ const CheckoutForm = ({ cart, total, onOrderComplete }: CheckoutFormProps) => {
   const { data: shippingRate, isLoading: isLoadingShippingRate } = useShippingRateByPrefecture(selectedPrefecture);
   const [shippingFee, setShippingFee] = useState<number | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
+  const [hasPaid, setHasPaid] = useState(false);
+  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
+  const [isCopied, setIsCopied] = useState<Record<string, boolean>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
@@ -78,6 +91,31 @@ const CheckoutForm = ({ cart, total, onOrderComplete }: CheckoutFormProps) => {
   // Calculate total with shipping
   const totalWithShipping = total + (shippingFee || 0);
 
+  const copyToClipboard = (text: string, field: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setIsCopied({ ...isCopied, [field]: true });
+      setTimeout(() => {
+        setIsCopied({ ...isCopied, [field]: false });
+      }, 2000);
+    });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "File terlalu besar",
+          description: "Ukuran file maksimal 10MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      setPaymentProofFile(file);
+    }
+  };
+
   const generateWhatsAppMessage = (data: CheckoutFormData) => {
     const productList = cart.map(item => {
       const variants = item.selectedVariants 
@@ -98,7 +136,12 @@ const CheckoutForm = ({ cart, total, onOrderComplete }: CheckoutFormProps) => {
     if (data.paymentMethod === 'Bank Transfer (Rupiah)') {
       paymentInfo += `\nNama Penerima: PT. Injapan Shop\nNomor Rekening: 1234567890 (BCA)`;
     } else if (data.paymentMethod === 'Bank Transfer (Yucho / ゆうちょ銀行)') {
-      paymentInfo += `\nNama Penerima: イジャパンショップ\nNomor Rekening: 9876543210`;
+      paymentInfo += `\nNama Penerima: Heri Kurnianta\nAccount Number: 22210551\nNama Bank: BANK POST\nBank code: 11170\nBranch code: 118\nReferensi: 24`;
+    }
+
+    // Add payment status
+    if (hasPaid && paymentProofFile) {
+      paymentInfo += `\n\n*STATUS PEMBAYARAN:* Sudah Dibayar ✅\nBukti pembayaran telah diunggah.`;
     }
 
     const message = `Halo Admin Injapan Food
@@ -160,7 +203,8 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
           postal_code: data.postalCode,
           address: data.address,
           notes: data.notes,
-          payment_method: data.paymentMethod
+          payment_method: data.paymentMethod,
+          payment_status: hasPaid ? 'paid' : 'pending'
         },
         userId: user?.uid,
         shipping_fee: shippingFee || 0
@@ -397,6 +441,11 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
                     onValueChange={(value) => {
                       field.onChange(value);
                       setSelectedPaymentMethod(value);
+                      setHasPaid(false);
+                      setPaymentProofFile(null);
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = '';
+                      }
                     }}
                     defaultValue={field.value}
                   >
@@ -417,19 +466,193 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
             />
           </div>
 
-          {/* Bank Account Information - Conditionally displayed */}
-          {selectedPaymentMethod === 'Bank Transfer (Rupiah)' && (
+          {/* Bank Transfer Details - Yucho */}
+          {selectedPaymentMethod === 'Bank Transfer (Yucho / ゆうちょ銀行)' && (
             <Card className="bg-blue-50 border-blue-200">
-              <CardContent className="pt-4">
-                <h3 className="font-medium text-blue-800 mb-2 flex items-center">
-                  <CreditCard className="w-4 h-4 mr-2" />
-                  Informasi Rekening Bank
-                </h3>
-                <div className="space-y-1 text-blue-700">
-                  <p><span className="font-semibold">Nama Penerima:</span> PT. Injapan Shop</p>
-                  <p><span className="font-semibold">Nomor Rekening:</span> 1234567890 (BCA)</p>
+              <CardContent className="pt-6">
+                <h3 className="font-semibold text-blue-800 mb-4 text-lg">Jumlah yang harus dibayar: <span className="text-red-600">¥{totalWithShipping.toLocaleString()}</span></h3>
+                
+                <div className="space-y-6">
+                  {/* Step 1: Transfer Information */}
+                  <div>
+                    <h4 className="font-medium text-blue-800 mb-3">Langkah 1: Mengirim uang ke rekening</h4>
+                    <div className="bg-white p-4 rounded-lg border border-blue-200 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center">
+                          <span className="font-semibold text-gray-700 w-40">Account Number:</span>
+                          <span className="text-gray-900">22210551</span>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-xs"
+                          onClick={() => copyToClipboard('22210551', 'account')}
+                        >
+                          {isCopied['account'] ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+                          {isCopied['account'] ? 'Disalin' : 'Salin'}
+                        </Button>
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center">
+                          <span className="font-semibold text-gray-700 w-40">Nama Pemegang Rekening:</span>
+                          <span className="text-gray-900">Heri Kurnianta</span>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-xs"
+                          onClick={() => copyToClipboard('Heri Kurnianta', 'name')}
+                        >
+                          {isCopied['name'] ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+                          {isCopied['name'] ? 'Disalin' : 'Salin'}
+                        </Button>
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center">
+                          <span className="font-semibold text-gray-700 w-40">Nama Bank:</span>
+                          <span className="text-gray-900">BANK POST</span>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-xs"
+                          onClick={() => copyToClipboard('BANK POST', 'bank')}
+                        >
+                          {isCopied['bank'] ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+                          {isCopied['bank'] ? 'Disalin' : 'Salin'}
+                        </Button>
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center">
+                          <span className="font-semibold text-gray-700 w-40">Bank code:</span>
+                          <span className="text-gray-900">11170</span>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-xs"
+                          onClick={() => copyToClipboard('11170', 'bankcode')}
+                        >
+                          {isCopied['bankcode'] ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+                          {isCopied['bankcode'] ? 'Disalin' : 'Salin'}
+                        </Button>
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center">
+                          <span className="font-semibold text-gray-700 w-40">Branch code:</span>
+                          <span className="text-gray-900">118</span>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-xs"
+                          onClick={() => copyToClipboard('118', 'branchcode')}
+                        >
+                          {isCopied['branchcode'] ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+                          {isCopied['branchcode'] ? 'Disalin' : 'Salin'}
+                        </Button>
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center">
+                          <span className="font-semibold text-gray-700 w-40">Referensi:</span>
+                          <span className="text-gray-900">24</span>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-xs"
+                          onClick={() => copyToClipboard('24', 'reference')}
+                        >
+                          {isCopied['reference'] ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+                          {isCopied['reference'] ? 'Disalin' : 'Salin'}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Step 2: Upload Payment Proof */}
+                  <div>
+                    <h4 className="font-medium text-blue-800 mb-3">Langkah 2: Silakan unggah bukti pembayaran</h4>
+                    <div className="bg-white p-4 rounded-lg border border-blue-200">
+                      <FormField
+                        control={form.control}
+                        name="paymentProof"
+                        render={({ field: { onChange, value, ...rest } }) => (
+                          <FormItem>
+                            <FormControl>
+                              <div className="flex flex-col items-center justify-center w-full">
+                                <label htmlFor="payment-proof" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                    <Upload className="w-8 h-8 mb-2 text-gray-500" />
+                                    <p className="mb-2 text-sm text-gray-500">
+                                      <span className="font-semibold">Klik untuk unggah bukti pembayaran</span>
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      Maksimal 10MB (JPG, PNG, PDF)
+                                    </p>
+                                  </div>
+                                  <input
+                                    id="payment-proof"
+                                    type="file"
+                                    className="hidden"
+                                    accept="image/jpeg,image/png,application/pdf"
+                                    ref={fileInputRef}
+                                    onChange={(e) => {
+                                      onChange(e.target.files);
+                                      handleFileChange(e);
+                                    }}
+                                    {...rest}
+                                  />
+                                </label>
+                              </div>
+                            </FormControl>
+                            <p className="text-xs text-gray-500 mt-2">
+                              Lampirkan tanda terima bank atau screenshot transaksi untuk mempercepat konfirmasi
+                            </p>
+                            {paymentProofFile && (
+                              <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                                <p className="text-sm text-green-700 flex items-center">
+                                  <Check className="w-4 h-4 mr-1" />
+                                  {paymentProofFile.name} ({(paymentProofFile.size / (1024 * 1024)).toFixed(2)} MB)
+                                </p>
+                              </div>
+                            )}
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Step 3: Confirmation */}
+                  <div>
+                    <h4 className="font-medium text-blue-800 mb-3">Langkah 3: Apakah Anda telah bayar?</h4>
+                    <div className="space-y-3">
+                      <Button
+                        type="button"
+                        className={`w-full ${paymentProofFile ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed'}`}
+                        disabled={!paymentProofFile}
+                        onClick={() => setHasPaid(true)}
+                      >
+                        <Check className="w-4 h-4 mr-2" />
+                        Saya sudah bayar
+                      </Button>
+                      
+                      <div className="text-center">
+                        <a href="https://wa.me/817084894699" target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
+                          Hubungi kami sebelum pembayaran
+                        </a>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <Alert className="mt-3 bg-yellow-50 border-yellow-200">
+                
+                <Alert className="mt-4 bg-yellow-50 border-yellow-200">
                   <AlertTriangle className="h-4 w-4 text-yellow-800" />
                   <AlertDescription className="text-yellow-800 text-sm">
                     Harap transfer sesuai dengan total belanja dan simpan bukti transfer
@@ -439,18 +662,129 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
             </Card>
           )}
 
-          {selectedPaymentMethod === 'Bank Transfer (Yucho / ゆうちょ銀行)' && (
+          {/* Bank Transfer Details - Rupiah */}
+          {selectedPaymentMethod === 'Bank Transfer (Rupiah)' && (
             <Card className="bg-blue-50 border-blue-200">
-              <CardContent className="pt-4">
-                <h3 className="font-medium text-blue-800 mb-2 flex items-center">
-                  <CreditCard className="w-4 h-4 mr-2" />
-                  Informasi Rekening Bank
-                </h3>
-                <div className="space-y-1 text-blue-700">
-                  <p><span className="font-semibold">Nama Penerima:</span> イジャパンショップ</p>
-                  <p><span className="font-semibold">Nomor Rekening:</span> 9876543210</p>
+              <CardContent className="pt-6">
+                <h3 className="font-semibold text-blue-800 mb-4 text-lg">Jumlah yang harus dibayar: <span className="text-red-600">¥{totalWithShipping.toLocaleString()}</span></h3>
+                
+                <div className="space-y-6">
+                  {/* Step 1: Transfer Information */}
+                  <div>
+                    <h4 className="font-medium text-blue-800 mb-3">Langkah 1: Mengirim uang ke rekening</h4>
+                    <div className="bg-white p-4 rounded-lg border border-blue-200 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center">
+                          <span className="font-semibold text-gray-700 w-40">Nama Penerima:</span>
+                          <span className="text-gray-900">PT. Injapan Shop</span>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-xs"
+                          onClick={() => copyToClipboard('PT. Injapan Shop', 'name-rupiah')}
+                        >
+                          {isCopied['name-rupiah'] ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+                          {isCopied['name-rupiah'] ? 'Disalin' : 'Salin'}
+                        </Button>
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center">
+                          <span className="font-semibold text-gray-700 w-40">Nomor Rekening:</span>
+                          <span className="text-gray-900">1234567890 (BCA)</span>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-xs"
+                          onClick={() => copyToClipboard('1234567890', 'account-rupiah')}
+                        >
+                          {isCopied['account-rupiah'] ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+                          {isCopied['account-rupiah'] ? 'Disalin' : 'Salin'}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Step 2: Upload Payment Proof */}
+                  <div>
+                    <h4 className="font-medium text-blue-800 mb-3">Langkah 2: Silakan unggah bukti pembayaran</h4>
+                    <div className="bg-white p-4 rounded-lg border border-blue-200">
+                      <FormField
+                        control={form.control}
+                        name="paymentProof"
+                        render={({ field: { onChange, value, ...rest } }) => (
+                          <FormItem>
+                            <FormControl>
+                              <div className="flex flex-col items-center justify-center w-full">
+                                <label htmlFor="payment-proof" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                    <Upload className="w-8 h-8 mb-2 text-gray-500" />
+                                    <p className="mb-2 text-sm text-gray-500">
+                                      <span className="font-semibold">Klik untuk unggah bukti pembayaran</span>
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      Maksimal 10MB (JPG, PNG, PDF)
+                                    </p>
+                                  </div>
+                                  <input
+                                    id="payment-proof"
+                                    type="file"
+                                    className="hidden"
+                                    accept="image/jpeg,image/png,application/pdf"
+                                    ref={fileInputRef}
+                                    onChange={(e) => {
+                                      onChange(e.target.files);
+                                      handleFileChange(e);
+                                    }}
+                                    {...rest}
+                                  />
+                                </label>
+                              </div>
+                            </FormControl>
+                            <p className="text-xs text-gray-500 mt-2">
+                              Lampirkan tanda terima bank atau screenshot transaksi untuk mempercepat konfirmasi
+                            </p>
+                            {paymentProofFile && (
+                              <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                                <p className="text-sm text-green-700 flex items-center">
+                                  <Check className="w-4 h-4 mr-1" />
+                                  {paymentProofFile.name} ({(paymentProofFile.size / (1024 * 1024)).toFixed(2)} MB)
+                                </p>
+                              </div>
+                            )}
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Step 3: Confirmation */}
+                  <div>
+                    <h4 className="font-medium text-blue-800 mb-3">Langkah 3: Apakah Anda telah bayar?</h4>
+                    <div className="space-y-3">
+                      <Button
+                        type="button"
+                        className={`w-full ${paymentProofFile ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed'}`}
+                        disabled={!paymentProofFile}
+                        onClick={() => setHasPaid(true)}
+                      >
+                        <Check className="w-4 h-4 mr-2" />
+                        Saya sudah bayar
+                      </Button>
+                      
+                      <div className="text-center">
+                        <a href="https://wa.me/817084894699" target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
+                          Hubungi kami sebelum pembayaran
+                        </a>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <Alert className="mt-3 bg-yellow-50 border-yellow-200">
+                
+                <Alert className="mt-4 bg-yellow-50 border-yellow-200">
                   <AlertTriangle className="h-4 w-4 text-yellow-800" />
                   <AlertDescription className="text-yellow-800 text-sm">
                     Harap transfer sesuai dengan total belanja dan simpan bukti transfer
@@ -491,7 +825,13 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
           <div className="pt-4 border-t">
             <Button
               type="submit"
-              disabled={isSubmitting || cart.length === 0 || (selectedPrefecture && shippingFee === null) || !selectedPaymentMethod}
+              disabled={
+                isSubmitting || 
+                cart.length === 0 || 
+                (selectedPrefecture && shippingFee === null) || 
+                !selectedPaymentMethod ||
+                (selectedPaymentMethod !== 'COD (Cash on Delivery)' && !hasPaid)
+              }
               className="w-full bg-green-600 hover:bg-green-700 text-white py-3 text-lg font-semibold flex items-center justify-center space-x-2"
             >
               <MessageCircle className="w-5 h-5" />
@@ -515,6 +855,15 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
               <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-sm text-yellow-700">
                   Silakan pilih metode pembayaran untuk melanjutkan.
+                </p>
+              </div>
+            )}
+            
+            {selectedPaymentMethod !== 'COD (Cash on Delivery)' && !hasPaid && (
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-700 flex items-center">
+                  <ArrowRight className="w-4 h-4 mr-1 flex-shrink-0" />
+                  Silakan unggah bukti pembayaran dan klik "Saya sudah bayar" untuk melanjutkan.
                 </p>
               </div>
             )}

@@ -228,8 +228,12 @@ const Invoice = ({ order, invoiceNumber }: InvoiceProps) => {
             
             {order.customer_info.payment_method === 'Bank Transfer (Yucho / ゆうちょ銀行)' && (
               <div className="mt-2 text-blue-700">
-                <p><span className="font-medium">Nama Penerima:</span> イジャパンショップ</p>
-                <p><span className="font-medium">Nomor Rekening:</span> 9876543210</p>
+                <p><span className="font-medium">Nama Penerima:</span> Heri Kurnianta</p>
+                <p><span className="font-medium">Account Number:</span> 22210551</p>
+                <p><span className="font-medium">Nama Bank:</span> BANK POST</p>
+                <p><span className="font-medium">Bank code:</span> 11170</p>
+                <p><span className="font-medium">Branch code:</span> 118</p>
+                <p><span className="font-medium">Referensi:</span> 24</p>
               </div>
             )}
           </div>
