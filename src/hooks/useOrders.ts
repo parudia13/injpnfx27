@@ -33,19 +33,22 @@ export const useCreateOrder = () => {
       items,
       totalPrice,
       customerInfo,
-      userId
+      userId,
+      shipping_fee
     }: {
       items: CartItem[];
       totalPrice: number;
       customerInfo: any;
       userId?: string;
+      shipping_fee?: number;
     }) => {
       return await createOrder({
         user_id: userId,
         customer_info: customerInfo,
         items: items,
         total_price: totalPrice,
-        status: 'pending'
+        status: 'pending',
+        shipping_fee: shipping_fee
       });
     },
     onSuccess: () => {

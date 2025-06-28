@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -14,6 +14,7 @@ import { toast } from '@/hooks/use-toast';
 import { useCreateOrder } from '@/hooks/useOrders';
 import { useAuth } from '@/hooks/useFirebaseAuth';
 import InvoiceModal from '@/components/InvoiceModal';
+import { useShippingRateByPrefecture } from '@/hooks/useShippingRates';
 
 const checkoutSchema = z.object({
   fullName: z.string().min(2, 'Nama lengkap harus minimal 2 karakter'),
@@ -40,6 +41,9 @@ const CheckoutForm = ({ cart, total, onOrderComplete }: CheckoutFormProps) => {
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
   const { user } = useAuth();
   const createOrder = useCreateOrder();
+  const [selectedPrefecture, setSelectedPrefecture] = useState<string>('');
+  const { data: shippingRate } = useShippingRateByPrefecture(selectedPrefecture);
+  const [shippingFee, setShippingFee] = useState<number | null>(null);
 
   const form = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
@@ -55,6 +59,18 @@ const CheckoutForm = ({ cart, total, onOrderComplete }: CheckoutFormProps) => {
     },
   });
 
+  // Update shipping fee when prefecture changes
+  useEffect(() => {
+    if (shippingRate) {
+      setShippingFee(shippingRate.rate);
+    } else {
+      setShippingFee(null);
+    }
+  }, [shippingRate]);
+
+  // Calculate total with shipping
+  const totalWithShipping = total + (shippingFee || 0);
+
   const generateWhatsAppMessage = (data: CheckoutFormData) => {
     const productList = cart.map(item => {
       const variants = item.selectedVariants 
@@ -63,6 +79,10 @@ const CheckoutForm = ({ cart, total, onOrderComplete }: CheckoutFormProps) => {
       
       return `- ${item.name}${variants ? ` | Varian: ${variants}` : ''} | Qty: ${item.quantity} | ¥${(item.price * item.quantity).toLocaleString()}`;
     }).join('\n');
+
+    const shippingInfo = shippingFee 
+      ? `\n*ONGKOS KIRIM: ¥${shippingFee.toLocaleString()}*` 
+      : '';
 
     const message = `Halo Admin Injapan Food
 
@@ -80,7 +100,8 @@ Alamat lengkap: ${data.address}
 *DAFTAR PRODUK:*
 ${productList}
 
-*TOTAL BELANJA: ¥${total.toLocaleString()}*
+*SUBTOTAL BELANJA: ¥${total.toLocaleString()}*${shippingInfo}
+*TOTAL BELANJA: ¥${totalWithShipping.toLocaleString()}*
 
 ${data.notes ? `Catatan: ${data.notes}` : ''}
 
@@ -111,7 +132,7 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
           image_url: item.image_url,
           selectedVariants: item.selectedVariants || {}
         })),
-        totalPrice: total,
+        totalPrice: totalWithShipping,
         customerInfo: {
           name: data.fullName,
           email: data.email,
@@ -122,14 +143,16 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
           address: data.address,
           notes: data.notes
         },
-        userId: user?.uid
+        userId: user?.uid,
+        shipping_fee: shippingFee || 0
       };
 
       const result = await createOrder.mutateAsync({
         items: orderData.items,
         totalPrice: orderData.totalPrice,
         customerInfo: orderData.customerInfo,
-        userId: orderData.userId
+        userId: orderData.userId,
+        shipping_fee: orderData.shipping_fee
       });
 
       // Create order object for invoice
@@ -151,7 +174,8 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
           zip: data.postalCode,
           country: 'Japan'
         },
-        payment_method: 'cod'
+        payment_method: 'cod',
+        shipping_fee: shippingFee || 0
       };
 
       setCreatedOrder(newOrder);
@@ -246,7 +270,13 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Prefektur *</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select 
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      setSelectedPrefecture(value);
+                    }} 
+                    defaultValue={field.value}
+                  >
                     <FormControl>
                       <SelectTrigger className="bg-white">
                         <SelectValue placeholder="Pilih prefektur" />
@@ -330,10 +360,34 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
             )}
           />
 
+          {/* Shipping Fee Information */}
+          <div className="border-t border-b py-4 my-4">
+            <div className="flex justify-between items-center mb-2">
+              <span className="font-medium">Subtotal:</span>
+              <span>¥{total.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center mb-2">
+              <span className="font-medium">Ongkos Kirim:</span>
+              {selectedPrefecture ? (
+                shippingFee !== null ? (
+                  <span>¥{shippingFee.toLocaleString()}</span>
+                ) : (
+                  <span className="text-yellow-600 text-sm">Ongkir untuk prefektur ini belum diatur</span>
+                )
+              ) : (
+                <span className="text-gray-500">Pilih prefektur</span>
+              )}
+            </div>
+            <div className="flex justify-between items-center pt-2 text-lg font-bold">
+              <span>Total:</span>
+              <span className="text-primary">¥{totalWithShipping.toLocaleString()}</span>
+            </div>
+          </div>
+
           <div className="pt-4 border-t">
             <Button
               type="submit"
-              disabled={isSubmitting || cart.length === 0}
+              disabled={isSubmitting || cart.length === 0 || (selectedPrefecture && shippingFee === null)}
               className="w-full bg-green-600 hover:bg-green-700 text-white py-3 text-lg font-semibold flex items-center justify-center space-x-2"
             >
               <MessageCircle className="w-5 h-5" />
@@ -344,6 +398,14 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
             <p className="text-center text-sm text-gray-600 mt-2">
               Pesanan akan disimpan di riwayat Anda dan dikirim ke WhatsApp
             </p>
+            
+            {selectedPrefecture && shippingFee === null && (
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-700">
+                  Ongkir untuk prefektur {selectedPrefecture} belum diatur. Silakan pilih prefektur lain atau hubungi admin.
+                </p>
+              </div>
+            )}
           </div>
         </form>
       </Form>

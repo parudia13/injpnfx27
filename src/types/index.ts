@@ -39,6 +39,7 @@ export interface Order {
   customer_info: CustomerInfo;
   referralTransaction?: any;
   invoice_number?: string;
+  shipping_fee?: number; // Added shipping fee field
 }
 
 export interface OrderItem {
@@ -163,4 +164,15 @@ export interface OrderTracking {
   total_amount?: number;
   items?: any[];
   created_at?: string;
+}
+
+// Shipping Rate interface
+export interface ShippingRate {
+  id: string;
+  prefecture: string;
+  prefecture_en: string;
+  rate: number;
+  estimated_days: string;
+  created_at: string;
+  updated_at: string;
 }
