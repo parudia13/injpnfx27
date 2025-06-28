@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { MessageCircle, FileText, CreditCard } from 'lucide-react';
+import { MessageCircle, FileText, CreditCard, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,6 +17,8 @@ import InvoiceModal from '@/components/InvoiceModal';
 import { useShippingRateByPrefecture } from '@/hooks/useShippingRates';
 import { useCurrencyConverter } from '@/hooks/useCurrencyConverter';
 import PaymentMethodInfo from '@/components/PaymentMethodInfo';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '@/config/firebase';
 
 const checkoutSchema = z.object({
   fullName: z.string().min(2, 'Nama lengkap harus minimal 2 karakter'),
@@ -47,6 +49,8 @@ const CheckoutForm = ({ cart, total, onOrderComplete }: CheckoutFormProps) => {
   const [selectedPrefecture, setSelectedPrefecture] = useState<string>('');
   const { data: shippingRate, isLoading: isLoadingShippingRate } = useShippingRateByPrefecture(selectedPrefecture);
   const [shippingFee, setShippingFee] = useState<number | null>(null);
+  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
+  const [paymentProofPreview, setPaymentProofPreview] = useState<string | null>(null);
 
   const form = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
@@ -125,9 +129,67 @@ ${productList}
 
 ${data.notes ? `Catatan: ${data.notes}` : ''}
 
+${paymentProofFile ? 'Saya sudah mengupload bukti pembayaran melalui website.' : ''}
+
 Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
 
     return encodeURIComponent(message);
+  };
+
+  const handlePaymentProofChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: "Format file tidak valid",
+        description: "Harap unggah file gambar (JPG, PNG, WEBP, GIF)",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Ukuran file terlalu besar",
+        description: "Ukuran file maksimal 5MB",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setPaymentProofFile(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPaymentProofPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removePaymentProof = () => {
+    setPaymentProofFile(null);
+    setPaymentProofPreview(null);
+  };
+
+  const uploadPaymentProof = async (orderId: string): Promise<string | null> => {
+    if (!paymentProofFile) return null;
+
+    try {
+      // Upload to Firebase Storage
+      const storageRef = ref(storage, `payment-proofs/${orderId}_${Date.now()}`);
+      await uploadBytes(storageRef, paymentProofFile);
+      const downloadURL = await getDownloadURL(storageRef);
+      
+      return downloadURL;
+    } catch (error) {
+      console.error('Error uploading payment proof:', error);
+      return null;
+    }
   };
 
   const onSubmit = async (data: CheckoutFormData) => {
@@ -176,6 +238,19 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
         shipping_fee: orderData.shipping_fee
       });
 
+      // Upload payment proof if provided
+      let paymentProofUrl = null;
+      if (paymentProofFile) {
+        paymentProofUrl = await uploadPaymentProof(orderId);
+        
+        // If payment proof was uploaded, update the order with the URL
+        if (paymentProofUrl) {
+          // Import the function here to avoid circular dependencies
+          const { updatePaymentProof } = await import('@/services/orderService');
+          await updatePaymentProof(orderId, paymentProofUrl);
+        }
+      }
+
       // Create order object for invoice
       const newOrder: Order = {
         id: orderId,
@@ -197,7 +272,8 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
           country: 'Japan'
         },
         payment_method: data.paymentMethod as 'credit_card' | 'paypal' | 'cod',
-        shipping_fee: shippingFee || 0
+        shipping_fee: shippingFee || 0,
+        payment_proof_url: paymentProofUrl
       };
 
       setCreatedOrder(newOrder);
@@ -416,6 +492,46 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
               paymentMethod={paymentMethod} 
               totalAmount={totalWithShipping} 
             />
+          )}
+
+          {/* Payment Proof Upload (Optional) */}
+          {paymentMethod && paymentMethod !== 'COD (Cash on Delivery)' && (
+            <div className="space-y-2">
+              <FormLabel>Bukti Pembayaran (Opsional)</FormLabel>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePaymentProofChange}
+                  className="mb-2"
+                />
+                <p className="text-xs text-gray-500">
+                  Format: JPG, PNG, WEBP, GIF (Maks. 5MB)
+                </p>
+                
+                {paymentProofPreview && (
+                  <div className="mt-3">
+                    <div className="relative inline-block">
+                      <img 
+                        src={paymentProofPreview} 
+                        alt="Preview" 
+                        className="w-40 h-40 object-cover rounded-md border border-gray-200" 
+                      />
+                      <button
+                        type="button"
+                        onClick={removePaymentProof}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <p className="text-sm text-green-600 mt-2">
+                      Bukti pembayaran siap diupload
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
 
           {/* Order Summary with Shipping Fee */}
