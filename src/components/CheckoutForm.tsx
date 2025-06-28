@@ -363,13 +363,14 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
             )}
           />
 
-          {/* Shipping Fee Information */}
-          <div className="border-t border-b py-4 my-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className="font-medium">Subtotal:</span>
+          {/* Order Summary with Shipping Fee */}
+          <div className="border-t border-b py-4 my-4 space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="font-medium">Subtotal Produk:</span>
               <span>¥{total.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between items-center mb-2">
+            
+            <div className="flex justify-between items-center">
               <span className="font-medium">Ongkos Kirim:</span>
               {selectedPrefecture ? (
                 isLoadingShippingRate ? (
@@ -377,12 +378,13 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
                 ) : shippingFee !== null ? (
                   <span>¥{shippingFee.toLocaleString()}</span>
                 ) : (
-                  <span className="text-yellow-600 text-sm">Ongkir untuk prefektur ini belum diatur</span>
+                  <span className="text-yellow-600 text-sm">Ongkir belum diatur</span>
                 )
               ) : (
                 <span className="text-gray-500">Pilih prefektur</span>
               )}
             </div>
+            
             <div className="flex justify-between items-center pt-2 text-lg font-bold">
               <span>Total:</span>
               <span className="text-primary">¥{totalWithShipping.toLocaleString()}</span>
