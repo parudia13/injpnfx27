@@ -284,7 +284,7 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
                     </FormControl>
                     <SelectContent className="bg-white border shadow-lg max-h-60 z-50">
                       {prefectures.map((prefecture) => (
-                        <SelectItem key={prefecture.name} value={prefecture.name_en.toLowerCase()}>
+                        <SelectItem key={prefecture.name} value={prefecture.name_en}>
                           {prefecture.name} ({prefecture.name_en})
                         </SelectItem>
                       ))}

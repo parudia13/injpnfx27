@@ -32,17 +32,28 @@ export const getAllShippingRates = async (): Promise<ShippingRate[]> => {
 
 export const getShippingRateByPrefecture = async (prefectureId: string): Promise<ShippingRate | null> => {
   try {
+    if (!prefectureId) {
+      console.log('No prefecture ID provided');
+      return null;
+    }
+    
+    console.log('Fetching shipping rate for prefecture ID:', prefectureId);
+    
     const shippingRatesRef = collection(db, SHIPPING_RATES_COLLECTION);
     const q = query(shippingRatesRef, where('prefecture_id', '==', prefectureId));
     const snapshot = await getDocs(q);
     
     if (snapshot.empty) {
+      console.log('No shipping rate found for prefecture ID:', prefectureId);
       return null;
     }
     
+    const data = snapshot.docs[0].data();
+    console.log('Found shipping rate:', data);
+    
     return {
       id: snapshot.docs[0].id,
-      ...snapshot.docs[0].data()
+      ...data
     } as ShippingRate;
   } catch (error) {
     console.error('Error fetching shipping rate:', error);
