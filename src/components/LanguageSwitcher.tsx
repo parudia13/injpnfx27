@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useLanguage } from '@/hooks/useLanguage';
-import { Button } from '@/components/ui/button';
 
 const LanguageSwitcher = () => {
   const { language, setLanguage } = useLanguage();

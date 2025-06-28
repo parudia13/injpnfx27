@@ -1,5 +1,4 @@
-
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useFirebaseAuth';
 import { useEffect, useState } from 'react';
 import AdminSidebar from './AdminSidebar';
@@ -12,6 +11,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const { user, loading: authLoading } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const location = useLocation();
 
   useEffect(() => {
     const checkAdminStatus = () => {

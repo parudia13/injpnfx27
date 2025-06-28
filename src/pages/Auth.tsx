@@ -1,12 +1,13 @@
-
 import AuthForm from '@/components/AuthForm';
 import { useAuth } from '@/hooks/useFirebaseAuth';
 import { useEffect } from 'react';
 import { getFirestore, doc, setDoc } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
 
 const Auth = () => {
   const { user } = useAuth();
   const db = getFirestore();
+  const navigate = useNavigate();
   
   // Redirect to home page if user is logged in
   useEffect(() => {
@@ -35,9 +36,10 @@ const Auth = () => {
       };
 
       ensureUserProfile();
-      window.location.href = '/';
+      // Use navigate instead of window.location to prevent full page reload
+      navigate('/', { replace: true });
     }
-  }, [user, db]);
+  }, [user, db, navigate]);
   
   // Only show auth form if no user
   return <AuthForm />;
