@@ -10,14 +10,13 @@ interface PaymentMethodInfoProps {
 }
 
 const PaymentMethodInfo = ({ paymentMethod, totalAmount }: PaymentMethodInfoProps) => {
-  const { convertedRupiah, isLoading, error } = useCurrencyConverter(totalAmount, paymentMethod);
+  const { convertedRupiah, isLoading, error, refreshRate } = useCurrencyConverter(totalAmount, paymentMethod);
   const [showRefreshAnimation, setShowRefreshAnimation] = useState(false);
 
   const handleRefreshRate = () => {
     setShowRefreshAnimation(true);
+    refreshRate();
     setTimeout(() => setShowRefreshAnimation(false), 1000);
-    // The hook will automatically refetch when totalAmount changes
-    // This is just a visual indicator for the user
   };
 
   if (!paymentMethod) return null;
