@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext } from 'react';
+import { useState, useEffect, createContext, useContext, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
@@ -131,7 +131,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     if (!auth) {
-      window.location.href = '/auth';
+      setTimeout(() => {
+        window.location.href = '/auth';
+      }, 100);
       return;
     }
 
@@ -152,14 +154,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // Memoize the context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    user,
+    signIn,
+    signUp,
+    signOut,
+    loading
+  }), [user, loading]);
+
   return (
-    <AuthContext.Provider value={{
-      user,
-      signIn,
-      signUp,
-      signOut,
-      loading
-    }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

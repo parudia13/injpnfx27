@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { CartItem, Product } from '@/types';
 import { 
   getCartFromStorage, 
@@ -39,8 +39,9 @@ export const useCart = () => {
     setCart([]);
   }, []);
 
-  const total = getCartTotal(cart);
-  const itemCount = cart.reduce((count, item) => count + item.quantity, 0);
+  // Memoize derived values to prevent unnecessary recalculations
+  const total = useMemo(() => getCartTotal(cart), [cart]);
+  const itemCount = useMemo(() => cart.reduce((count, item) => count + item.quantity, 0), [cart]);
 
   return {
     cart,
