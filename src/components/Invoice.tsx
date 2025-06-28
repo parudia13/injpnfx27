@@ -78,7 +78,7 @@ const Invoice = ({ order, invoiceNumber }: InvoiceProps) => {
       {/* Contact Information */}
       <div className="flex justify-between text-sm text-gray-600 mb-6 border-b pb-4">
         <div className="flex items-center space-x-2">
-          <span>📱 WhatsApp: +62 851-5545-2259</span>
+          <span>📱 WhatsApp: +817084894699</span>
         </div>
         <div className="flex items-center space-x-2">
           <span>📧 info@injapanfood.com</span>
@@ -224,7 +224,7 @@ const Invoice = ({ order, invoiceNumber }: InvoiceProps) => {
           Terima kasih telah berbelanja di Injapan Food!
         </p>
         <p className="text-gray-600 mb-4">
-          Untuk pertanyaan lebih lanjut, hubungi kami melalui WhatsApp: +62 851-5545-2259
+          Untuk pertanyaan lebih lanjut, hubungi kami melalui WhatsApp: +817084894699
         </p>
         <div className="text-xs text-gray-500">
           <p>Invoice ini dibuat secara otomatis oleh sistem Injapan Food</p>
