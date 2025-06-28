@@ -8,7 +8,7 @@ import {
   setDoc, 
   updateDoc, 
   deleteDoc,
-  orderBy
+  addDoc
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { ShippingRate } from '@/types';
@@ -18,8 +18,7 @@ const SHIPPING_RATES_COLLECTION = 'shipping_rates';
 export const getAllShippingRates = async (): Promise<ShippingRate[]> => {
   try {
     const shippingRatesRef = collection(db, SHIPPING_RATES_COLLECTION);
-    const q = query(shippingRatesRef, orderBy('prefecture'));
-    const snapshot = await getDocs(q);
+    const snapshot = await getDocs(shippingRatesRef);
     
     return snapshot.docs.map(doc => ({
       id: doc.id,
@@ -31,10 +30,10 @@ export const getAllShippingRates = async (): Promise<ShippingRate[]> => {
   }
 };
 
-export const getShippingRateByPrefecture = async (prefecture: string): Promise<ShippingRate | null> => {
+export const getShippingRateByPrefecture = async (prefectureId: string): Promise<ShippingRate | null> => {
   try {
     const shippingRatesRef = collection(db, SHIPPING_RATES_COLLECTION);
-    const q = query(shippingRatesRef, where('prefecture', '==', prefecture));
+    const q = query(shippingRatesRef, where('prefecture_id', '==', prefectureId));
     const snapshot = await getDocs(q);
     
     if (snapshot.empty) {
@@ -54,22 +53,22 @@ export const getShippingRateByPrefecture = async (prefecture: string): Promise<S
 export const addShippingRate = async (shippingRateData: Omit<ShippingRate, 'id' | 'created_at' | 'updated_at'>): Promise<string> => {
   try {
     // Check if rate already exists for this prefecture
-    const existingRate = await getShippingRateByPrefecture(shippingRateData.prefecture);
+    const existingRate = await getShippingRateByPrefecture(shippingRateData.prefecture_id);
     
     if (existingRate) {
-      throw new Error(`Shipping rate for ${shippingRateData.prefecture} already exists`);
+      throw new Error(`Shipping rate for ${shippingRateData.kanji} already exists`);
     }
     
-    const shippingRateRef = doc(collection(db, SHIPPING_RATES_COLLECTION));
+    const shippingRateRef = collection(db, SHIPPING_RATES_COLLECTION);
     const timestamp = new Date().toISOString();
     
-    await setDoc(shippingRateRef, {
+    const docRef = await addDoc(shippingRateRef, {
       ...shippingRateData,
       created_at: timestamp,
       updated_at: timestamp
     });
     
-    return shippingRateRef.id;
+    return docRef.id;
   } catch (error) {
     console.error('Error adding shipping rate:', error);
     throw error;

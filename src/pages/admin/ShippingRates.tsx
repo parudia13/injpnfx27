@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useShippingRates, useAddShippingRate, useUpdateShippingRate, useDeleteShippingRate } from '@/hooks/useShippingRates';
 import { toast } from '@/hooks/use-toast';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,8 +36,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Truck, Plus, Edit, Trash2, Search } from 'lucide-react';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where } from 'firebase/firestore';
-import { db } from '@/config/firebase';
+import { ShippingRate } from '@/types';
 
 // Define the prefectures of Japan
 const japanPrefectures = [
@@ -89,19 +89,12 @@ const japanPrefectures = [
   { id: 'okinawa', kanji: '沖縄県', romaji: 'Okinawa' }
 ];
 
-interface ShippingRate {
-  id: string;
-  prefecture_id: string;
-  kanji: string;
-  price: number;
-  delivery_time: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
 const ShippingRates = () => {
-  const [shippingRates, setShippingRates] = useState<ShippingRate[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: shippingRates = [], isLoading } = useShippingRates();
+  const addShippingRate = useAddShippingRate();
+  const updateShippingRate = useUpdateShippingRate();
+  const deleteShippingRate = useDeleteShippingRate();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -110,43 +103,16 @@ const ShippingRates = () => {
   const [formData, setFormData] = useState({
     prefecture_id: '',
     kanji: '',
+    romaji: '',
     price: '',
     delivery_time: ''
   });
 
-  // Fetch shipping rates on component mount
-  useEffect(() => {
-    fetchShippingRates();
-  }, []);
-
-  const fetchShippingRates = async () => {
-    setIsLoading(true);
-    try {
-      const shippingRatesRef = collection(db, 'shipping_rates');
-      const snapshot = await getDocs(shippingRatesRef);
-      
-      const rates: ShippingRate[] = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as ShippingRate));
-      
-      setShippingRates(rates);
-    } catch (error) {
-      console.error('Error fetching shipping rates:', error);
-      toast({
-        title: "Error",
-        description: "Gagal memuat data ongkir",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const filteredRates = shippingRates.filter(rate => 
-    rate.kanji.includes(searchTerm) || 
-    (japanPrefectures.find(p => p.id === rate.prefecture_id)?.romaji || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredRates = shippingRates.filter(rate => {
+    const matchesSearch = rate.kanji.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         rate.romaji.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
+  });
 
   const getAvailablePrefectures = () => {
     const usedPrefectureIds = new Set(shippingRates.map(rate => rate.prefecture_id));
@@ -163,16 +129,17 @@ const ShippingRates = () => {
       setFormData(prev => ({
         ...prev,
         prefecture_id: prefectureId,
-        kanji: prefecture.kanji
+        kanji: prefecture.kanji,
+        romaji: prefecture.romaji
       }));
     }
   };
 
   const handleAddSubmit = async () => {
-    if (!formData.prefecture_id || !formData.kanji || !formData.price) {
+    if (!formData.prefecture_id || !formData.price || !formData.delivery_time) {
       toast({
         title: "Error",
-        description: "Prefektur dan ongkir wajib diisi",
+        description: "Semua field wajib diisi",
         variant: "destructive"
       });
       return;
@@ -189,31 +156,13 @@ const ShippingRates = () => {
     }
 
     try {
-      // Check if prefecture already has a shipping rate
-      const shippingRatesRef = collection(db, 'shipping_rates');
-      const q = query(shippingRatesRef, where("prefecture_id", "==", formData.prefecture_id));
-      const snapshot = await getDocs(q);
-      
-      if (!snapshot.empty) {
-        toast({
-          title: "Error",
-          description: "Ongkir untuk prefektur ini sudah ada",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Add new shipping rate
-      const newRate = {
+      await addShippingRate.mutateAsync({
         prefecture_id: formData.prefecture_id,
         kanji: formData.kanji,
+        romaji: formData.romaji,
         price: price,
-        delivery_time: formData.delivery_time || '3-5 hari',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-
-      await addDoc(collection(db, 'shipping_rates'), newRate);
+        delivery_time: formData.delivery_time
+      });
 
       toast({
         title: "Berhasil",
@@ -224,25 +173,25 @@ const ShippingRates = () => {
       setFormData({
         prefecture_id: '',
         kanji: '',
+        romaji: '',
         price: '',
         delivery_time: ''
       });
-      fetchShippingRates();
     } catch (error) {
       console.error('Error adding shipping rate:', error);
       toast({
         title: "Error",
-        description: "Gagal menambahkan ongkir",
+        description: error instanceof Error ? error.message : "Gagal menambahkan ongkir",
         variant: "destructive"
       });
     }
   };
 
   const handleEditSubmit = async () => {
-    if (!selectedRate || !formData.price) {
+    if (!selectedRate || !formData.price || !formData.delivery_time) {
       toast({
         title: "Error",
-        description: "Ongkir wajib diisi",
+        description: "Semua field wajib diisi",
         variant: "destructive"
       });
       return;
@@ -259,11 +208,12 @@ const ShippingRates = () => {
     }
 
     try {
-      const rateRef = doc(db, 'shipping_rates', selectedRate.id);
-      await updateDoc(rateRef, {
-        price: price,
-        delivery_time: formData.delivery_time || selectedRate.delivery_time,
-        updated_at: new Date().toISOString()
+      await updateShippingRate.mutateAsync({
+        id: selectedRate.id,
+        updates: {
+          price: price,
+          delivery_time: formData.delivery_time
+        }
       });
 
       toast({
@@ -273,7 +223,6 @@ const ShippingRates = () => {
 
       setIsEditDialogOpen(false);
       setSelectedRate(null);
-      fetchShippingRates();
     } catch (error) {
       console.error('Error updating shipping rate:', error);
       toast({
@@ -286,14 +235,12 @@ const ShippingRates = () => {
 
   const handleDelete = async (id: string, kanji: string) => {
     try {
-      await deleteDoc(doc(db, 'shipping_rates', id));
+      await deleteShippingRate.mutateAsync(id);
       
       toast({
         title: "Berhasil",
         description: `Ongkir untuk ${kanji} berhasil dihapus`,
       });
-      
-      fetchShippingRates();
     } catch (error) {
       console.error('Error deleting shipping rate:', error);
       toast({
@@ -309,6 +256,7 @@ const ShippingRates = () => {
     setFormData({
       prefecture_id: rate.prefecture_id,
       kanji: rate.kanji,
+      romaji: rate.romaji,
       price: rate.price.toString(),
       delivery_time: rate.delivery_time
     });
@@ -390,9 +338,6 @@ const ShippingRates = () => {
                     onChange={(e) => handleInputChange('delivery_time', e.target.value)}
                     placeholder="Contoh: 3-5 hari"
                   />
-                  <p className="text-xs text-gray-500">
-                    Biarkan kosong untuk menggunakan default "3-5 hari"
-                  </p>
                 </div>
               </div>
               
@@ -402,9 +347,10 @@ const ShippingRates = () => {
                 </Button>
                 <Button 
                   onClick={handleAddSubmit}
+                  disabled={addShippingRate.isPending}
                   className="bg-green-600 hover:bg-green-700"
                 >
-                  Simpan
+                  {addShippingRate.isPending ? 'Menyimpan...' : 'Simpan'}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -437,8 +383,8 @@ const ShippingRates = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Prefektur</TableHead>
-                      <TableHead>Romaji</TableHead>
+                      <TableHead>Prefektur (Kanji)</TableHead>
+                      <TableHead>Prefektur (Romaji)</TableHead>
                       <TableHead>Ongkos Kirim</TableHead>
                       <TableHead>Estimasi</TableHead>
                       <TableHead>Terakhir Diperbarui</TableHead>
@@ -456,9 +402,7 @@ const ShippingRates = () => {
                       filteredRates.map((rate) => (
                         <TableRow key={rate.id}>
                           <TableCell className="font-medium">{rate.kanji}</TableCell>
-                          <TableCell>
-                            {japanPrefectures.find(p => p.id === rate.prefecture_id)?.romaji || '-'}
-                          </TableCell>
+                          <TableCell>{rate.romaji}</TableCell>
                           <TableCell className="font-semibold text-primary">
                             {formatPrice(rate.price)}
                           </TableCell>
@@ -569,9 +513,10 @@ const ShippingRates = () => {
               </Button>
               <Button 
                 onClick={handleEditSubmit}
+                disabled={updateShippingRate.isPending}
                 className="bg-blue-600 hover:bg-blue-700"
               >
-                Simpan Perubahan
+                {updateShippingRate.isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
               </Button>
             </DialogFooter>
           </DialogContent>

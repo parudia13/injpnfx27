@@ -15,11 +15,11 @@ export const useShippingRates = () => {
   });
 };
 
-export const useShippingRateByPrefecture = (prefecture: string) => {
+export const useShippingRateByPrefecture = (prefectureId: string) => {
   return useQuery({
-    queryKey: ['shipping-rate', prefecture],
-    queryFn: () => getShippingRateByPrefecture(prefecture),
-    enabled: !!prefecture,
+    queryKey: ['shipping-rate', prefectureId],
+    queryFn: () => getShippingRateByPrefecture(prefectureId),
+    enabled: !!prefectureId,
   });
 };
 
@@ -43,7 +43,7 @@ export const useUpdateShippingRate = () => {
       updateShippingRate(id, updates),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['shipping-rates'] });
-      queryClient.invalidateQueries({ queryKey: ['shipping-rate', variables.updates.prefecture] });
+      queryClient.invalidateQueries({ queryKey: ['shipping-rate', variables.updates.prefecture_id] });
     },
   });
 };
