@@ -1,4 +1,3 @@
-
 import { useState, useEffect, createContext, useContext } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
@@ -56,7 +55,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!auth) {
       console.error('Firebase auth not initialized');
       setLoading(false);
-      return;
+      return () => {};
     }
 
     console.log('Setting up Firebase auth state listener');
@@ -140,11 +139,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log('Attempting Firebase sign out');
       await firebaseSignOut(auth);
       console.log('Sign out successful');
-      window.location.href = '/auth';
+      // Use navigate instead of window.location to prevent full page reload
+      setTimeout(() => {
+        window.location.href = '/auth';
+      }, 100);
     } catch (error) {
       console.error('Firebase sign out error:', error);
       // Force redirect even if sign out fails
-      window.location.href = '/auth';
+      setTimeout(() => {
+        window.location.href = '/auth';
+      }, 100);
     }
   };
 

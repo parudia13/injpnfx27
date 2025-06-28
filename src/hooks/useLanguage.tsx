@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import idTranslations from '@/locales/id.json';
 import enTranslations from '@/locales/en.json';
@@ -57,8 +56,15 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
     return typeof value === 'string' ? value : key;
   };
 
+  // Memoize the context value to prevent unnecessary re-renders
+  const contextValue = React.useMemo(() => ({
+    language,
+    setLanguage,
+    t
+  }), [language]);
+
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider value={contextValue}>
       {children}
     </LanguageContext.Provider>
   );

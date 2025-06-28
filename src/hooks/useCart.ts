@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { CartItem, Product } from '@/types';
 import { 
   getCartFromStorage, 
@@ -14,30 +13,31 @@ export const useCart = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Load cart from storage only once on mount
   useEffect(() => {
     setCart(getCartFromStorage());
     setLoading(false);
   }, []);
 
-  const addToCart = (product: Product, quantity: number = 1) => {
+  const addToCart = useCallback((product: Product, quantity: number = 1) => {
     const updatedCart = addToCartUtil(product, quantity);
     setCart(updatedCart);
-  };
+  }, []);
 
-  const removeFromCart = (itemId: string) => {
+  const removeFromCart = useCallback((itemId: string) => {
     const updatedCart = removeFromCartUtil(itemId);
     setCart(updatedCart);
-  };
+  }, []);
 
-  const updateQuantity = (itemId: string, quantity: number) => {
+  const updateQuantity = useCallback((itemId: string, quantity: number) => {
     const updatedCart = updateCartItemQuantityUtil(itemId, quantity);
     setCart(updatedCart);
-  };
+  }, []);
 
-  const clearCart = () => {
+  const clearCart = useCallback(() => {
     clearCartUtil();
     setCart([]);
-  };
+  }, []);
 
   const total = getCartTotal(cart);
   const itemCount = cart.reduce((count, item) => count + item.quantity, 0);
@@ -51,7 +51,7 @@ export const useCart = () => {
     clearCart,
     total,
     itemCount,
-    // Untuk kompatibilitas mundur
+    // For backward compatibility
     items: cart,
     getTotalPrice: () => total
   };
