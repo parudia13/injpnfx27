@@ -15,6 +15,8 @@ import { useCreateOrder } from '@/hooks/useOrders';
 import { useAuth } from '@/hooks/useFirebaseAuth';
 import InvoiceModal from '@/components/InvoiceModal';
 import { useShippingRateByPrefecture } from '@/hooks/useShippingRates';
+import { Card, CardContent } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const checkoutSchema = z.object({
   fullName: z.string().min(2, 'Nama lengkap harus minimal 2 karakter'),
@@ -45,6 +47,7 @@ const CheckoutForm = ({ cart, total, onOrderComplete }: CheckoutFormProps) => {
   const [selectedPrefecture, setSelectedPrefecture] = useState<string>('');
   const { data: shippingRate, isLoading: isLoadingShippingRate } = useShippingRateByPrefecture(selectedPrefecture);
   const [shippingFee, setShippingFee] = useState<number | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
 
   const form = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
@@ -88,6 +91,16 @@ const CheckoutForm = ({ cart, total, onOrderComplete }: CheckoutFormProps) => {
       ? `\n*ONGKOS KIRIM: ¥${shippingFee.toLocaleString()}*` 
       : '';
 
+    // Payment method information
+    let paymentInfo = `\n*METODE PEMBAYARAN:*\n${data.paymentMethod}`;
+    
+    // Add bank account details based on selected payment method
+    if (data.paymentMethod === 'Bank Transfer (Rupiah)') {
+      paymentInfo += `\nNama Penerima: PT. Injapan Shop\nNomor Rekening: 1234567890 (BCA)`;
+    } else if (data.paymentMethod === 'Bank Transfer (Yucho / ゆうちょ銀行)') {
+      paymentInfo += `\nNama Penerima: イジャパンショップ\nNomor Rekening: 9876543210`;
+    }
+
     const message = `Halo Admin Injapan Food
 
 Saya ingin memesan produk melalui website. Berikut detail pesanan saya:
@@ -100,9 +113,7 @@ Prefektur: ${data.prefecture}
 Area/Kota/Cho/Machi: ${data.city}
 Kode Pos: ${data.postalCode}
 Alamat lengkap: ${data.address}
-
-*METODE PEMBAYARAN:*
-${data.paymentMethod}
+${paymentInfo}
 
 *DAFTAR PRODUK:*
 ${productList}
@@ -377,7 +388,10 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
               <FormItem>
                 <FormLabel>Pilih Metode Pembayaran *</FormLabel>
                 <Select 
-                  onValueChange={field.onChange} 
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    setSelectedPaymentMethod(value);
+                  }}
                   defaultValue={field.value}
                 >
                   <FormControl>
@@ -395,6 +409,31 @@ Mohon konfirmasi pesanan saya. Terima kasih banyak!`;
               </FormItem>
             )}
           />
+
+          {/* Bank Account Information - Conditionally displayed */}
+          {selectedPaymentMethod === 'Bank Transfer (Rupiah)' && (
+            <Card className="bg-blue-50 border-blue-200">
+              <CardContent className="pt-4">
+                <h3 className="font-medium text-blue-800 mb-2">Informasi Rekening Bank</h3>
+                <div className="space-y-1 text-blue-700">
+                  <p><span className="font-semibold">Nama Penerima:</span> PT. Injapan Shop</p>
+                  <p><span className="font-semibold">Nomor Rekening:</span> 1234567890 (BCA)</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {selectedPaymentMethod === 'Bank Transfer (Yucho / ゆうちょ銀行)' && (
+            <Card className="bg-blue-50 border-blue-200">
+              <CardContent className="pt-4">
+                <h3 className="font-medium text-blue-800 mb-2">Informasi Rekening Bank</h3>
+                <div className="space-y-1 text-blue-700">
+                  <p><span className="font-semibold">Nama Penerima:</span> イジャパンショップ</p>
+                  <p><span className="font-semibold">Nomor Rekening:</span> 9876543210</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Order Summary with Shipping Fee */}
           <div className="border-t border-b py-4 my-4 space-y-2">

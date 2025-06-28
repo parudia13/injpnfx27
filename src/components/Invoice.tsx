@@ -112,6 +112,10 @@ const Invoice = ({ order, invoiceNumber }: InvoiceProps) => {
                  order.status}
               </span>
             </div>
+            <div className="flex justify-between">
+              <span className="font-medium">Metode Pembayaran:</span>
+              <span>{order.customer_info.payment_method || 'COD'}</span>
+            </div>
           </div>
         </div>
 
@@ -207,6 +211,30 @@ const Invoice = ({ order, invoiceNumber }: InvoiceProps) => {
           </div>
         </div>
       </div>
+
+      {/* Payment Method Information */}
+      {order.customer_info.payment_method && (
+        <div className="mb-8 page-break-avoid">
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <h4 className="font-medium text-blue-800 mb-2">Informasi Pembayaran:</h4>
+            <p className="text-blue-700 font-medium">{order.customer_info.payment_method}</p>
+            
+            {order.customer_info.payment_method === 'Bank Transfer (Rupiah)' && (
+              <div className="mt-2 text-blue-700">
+                <p><span className="font-medium">Nama Penerima:</span> PT. Injapan Shop</p>
+                <p><span className="font-medium">Nomor Rekening:</span> 1234567890 (BCA)</p>
+              </div>
+            )}
+            
+            {order.customer_info.payment_method === 'Bank Transfer (Yucho / ゆうちょ銀行)' && (
+              <div className="mt-2 text-blue-700">
+                <p><span className="font-medium">Nama Penerima:</span> イジャパンショップ</p>
+                <p><span className="font-medium">Nomor Rekening:</span> 9876543210</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Notes Section */}
       {order.customer_info.notes && (
