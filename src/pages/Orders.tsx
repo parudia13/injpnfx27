@@ -7,17 +7,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ShoppingBag, Calendar, Package, FileText, Eye, AlertCircle, RefreshCw } from 'lucide-react';
+import { ShoppingBag, Calendar, Package, FileText, Eye, AlertCircle, RefreshCw, Upload } from 'lucide-react';
 import { Order } from '@/types';
 import { Navigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import OrderPaymentStatus from '@/components/OrderPaymentStatus';
+import PaymentProofUploader from '@/components/PaymentProofUploader';
 
 const Orders = () => {
   const { user, loading: authLoading } = useAuth();
   const { data: orders, isLoading, error } = useUserOrders(user?.uid || '');
   const [showInvoice, setShowInvoice] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [showPaymentProof, setShowPaymentProof] = useState(false);
+  const [selectedPaymentProofUrl, setSelectedPaymentProofUrl] = useState<string | null>(null);
+  const [showUploader, setShowUploader] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   // Add manual refresh function instead of relying on automatic refetching
@@ -51,6 +56,20 @@ const Orders = () => {
   const handleShowInvoice = (order: Order) => {
     setSelectedOrder(order);
     setShowInvoice(true);
+  };
+
+  const handleViewPaymentProof = (url: string) => {
+    setSelectedPaymentProofUrl(url);
+    setShowPaymentProof(true);
+  };
+
+  const handleUploadPaymentProof = (orderId: string) => {
+    setShowUploader(orderId);
+  };
+
+  const handleUploadSuccess = () => {
+    setShowUploader(null);
+    handleRefresh();
   };
 
   const formatDate = (dateString: string) => {
@@ -118,6 +137,21 @@ const Orders = () => {
         return 'text-red-600';
       default:
         return 'text-gray-600';
+    }
+  };
+
+  const getPaymentStatus = (order: Order) => {
+    if (order.payment_status) {
+      return order.payment_status;
+    }
+    
+    // Fallback logic based on order status
+    if (order.status === 'confirmed' || order.status === 'processing' || order.status === 'completed') {
+      return 'verified';
+    } else if (order.status === 'cancelled') {
+      return 'rejected';
+    } else {
+      return 'pending';
     }
   };
 
@@ -254,6 +288,69 @@ const Orders = () => {
                         </div>
                       </div>
 
+                      {/* Payment Proof Section */}
+                      <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                        <h4 className="font-medium text-blue-800 mb-3">Bukti Pembayaran:</h4>
+                        
+                        {order.payment_proof_url ? (
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-16 h-16 bg-white rounded-md border border-blue-200 overflow-hidden">
+                                <img 
+                                  src={order.payment_proof_url} 
+                                  alt="Bukti Pembayaran" 
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-blue-700">Bukti pembayaran telah diupload</p>
+                                <p className="text-xs text-blue-600">
+                                  Status: {getPaymentStatus(order) === 'verified' ? 'Terverifikasi' : 
+                                          getPaymentStatus(order) === 'rejected' ? 'Ditolak' : 
+                                          'Menunggu verifikasi'}
+                                </p>
+                              </div>
+                            </div>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleViewPaymentProof(order.payment_proof_url || '')}
+                              className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                            >
+                              <Eye className="w-4 h-4 mr-2" />
+                              Lihat Bukti
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <p className="text-sm text-blue-700">
+                              Belum ada bukti pembayaran yang diupload.
+                            </p>
+                            {order.status === 'pending' && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleUploadPaymentProof(order.id)}
+                                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                              >
+                                <Upload className="w-4 h-4 mr-2" />
+                                Upload Bukti
+                              </Button>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Payment Proof Uploader */}
+                        {showUploader === order.id && (
+                          <div className="mt-4 border-t border-blue-200 pt-4">
+                            <PaymentProofUploader 
+                              orderId={order.id} 
+                              onSuccess={handleUploadSuccess}
+                            />
+                          </div>
+                        )}
+                      </div>
+
                       {/* Action Buttons */}
                       <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200">
                         <Button 
@@ -322,6 +419,27 @@ const Orders = () => {
           }}
           order={selectedOrder}
         />
+      )}
+
+      {/* Payment Proof Modal */}
+      {showPaymentProof && selectedPaymentProofUrl && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-50" onClick={() => setShowPaymentProof(false)}>
+          <div className="relative max-w-4xl max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowPaymentProof(false)}
+              className="absolute -top-12 right-0 text-white bg-black bg-opacity-50 hover:bg-opacity-70"
+            >
+              ✕ Close
+            </Button>
+            <img 
+              src={selectedPaymentProofUrl} 
+              alt="Bukti Pembayaran" 
+              className="max-w-full max-h-[80vh] object-contain"
+            />
+          </div>
+        </div>
       )}
 
       <Footer />
