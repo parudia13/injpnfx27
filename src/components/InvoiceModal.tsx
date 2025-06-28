@@ -52,119 +52,164 @@ const InvoiceModal = ({ isOpen, onClose, order }: InvoiceModalProps) => {
             }
             .print-container {
               width: 100%;
-              padding: 10mm;
+              padding: 15mm;
               box-sizing: border-box;
             }
             .page-break-avoid {
               page-break-inside: avoid;
             }
-            .invoice-header {
-              margin-bottom: 10px;
-            }
-            .invoice-table {
-              font-size: 10px;
+            table {
+              page-break-inside: avoid;
               width: 100%;
               border-collapse: collapse;
             }
-            .invoice-table th, .invoice-table td {
-              padding: 4px 8px;
-              border: 1px solid #d1d5db;
-            }
-            .invoice-footer {
-              margin-top: 10px;
-              font-size: 10px;
-            }
-            .invoice-total {
-              margin-top: 10px;
+            tr {
               page-break-inside: avoid;
             }
-            .compact-text {
-              font-size: 10px;
-              line-height: 1.2;
+            th, td {
+              border: 1px solid #d1d5db;
+              padding: 8px;
+              text-align: left;
             }
-            .compact-address {
-              max-width: 150px;
-              word-break: break-word;
+            th {
+              background-color: #f9fafb;
+              font-weight: 600;
             }
-            /* Additional print-specific styles */
-            .max-w-4xl { max-width: 100%; }
-            .mx-auto { margin-left: auto; margin-right: auto; }
-            .bg-white { background-color: white; }
-            .p-8 { padding: 2rem; }
-            .shadow-lg { box-shadow: none; }
-            .border-b-2 { border-bottom-width: 2px; }
-            .border-gray-200 { border-color: #e5e7eb; }
-            .pb-6 { padding-bottom: 1.5rem; }
-            .mb-6 { margin-bottom: 1.5rem; }
-            .mb-8 { margin-bottom: 2rem; }
-            .flex { display: flex; }
-            .items-center { align-items: center; }
-            .justify-between { justify-content: space-between; }
-            .justify-center { justify-content: center; }
-            .space-x-4 > * + * { margin-left: 1rem; }
-            .space-x-8 > * + * { margin-left: 2rem; }
-            .space-y-2 > * + * { margin-top: 0.5rem; }
-            .space-y-3 > * + * { margin-top: 0.75rem; }
-            .space-y-4 > * + * { margin-top: 1rem; }
-            .w-16 { width: 4rem; }
-            .h-16 { width: 4rem; }
-            .w-24 { width: 6rem; }
-            .w-64 { width: 16rem; }
-            .w-full { width: 100%; }
-            .rounded-lg { border-radius: 0.5rem; }
-            .overflow-hidden { overflow: hidden; }
-            .object-cover { object-fit: cover; }
-            .text-2xl { font-size: 1.5rem; line-height: 2rem; }
-            .text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
-            .text-lg { font-size: 1.125rem; line-height: 1.75rem; }
-            .text-xl { font-size: 1.25rem; line-height: 1.75rem; }
-            .text-sm { font-size: 0.875rem; line-height: 1.25rem; }
-            .text-xs { font-size: 0.75rem; line-height: 1rem; }
-            .font-bold { font-weight: 700; }
-            .font-semibold { font-weight: 600; }
-            .font-medium { font-weight: 500; }
-            .text-gray-900 { color: #111827; }
-            .text-gray-800 { color: #1f2937; }
-            .text-gray-700 { color: #374151; }
-            .text-gray-600 { color: #4b5563; }
-            .text-gray-500 { color: #6b7280; }
-            .text-red-600 { color: #dc2626; }
-            .text-yellow-800 { color: #92400e; }
-            .text-yellow-700 { color: #a16207; }
-            .text-blue-800 { color: #1e40af; }
-            .text-green-800 { color: #166534; }
-            .text-green-700 { color: #15803d; }
-            .text-right { text-align: right; }
-            .text-center { text-align: center; }
-            .text-left { text-align: left; }
-            .mt-1 { margin-top: 0.25rem; }
-            .mt-4 { margin-top: 1rem; }
-            .mr-2 { margin-right: 0.5rem; }
-            .grid { display: grid; }
-            .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .gap-4 { gap: 1rem; }
-            .border { border-width: 1px; }
-            .border-t { border-top-width: 1px; }
-            .border-t-2 { border-top-width: 2px; }
-            .border-collapse { border-collapse: collapse; }
-            .border-gray-300 { border-color: #d1d5db; }
-            .px-4 { padding-left: 1rem; padding-right: 1rem; }
-            .py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
-            .p-4 { padding: 1rem; }
-            .p-6 { padding: 1.5rem; }
-            .pt-3 { padding-top: 0.75rem; }
-            .pt-4 { padding-top: 1rem; }
-            .pt-6 { padding-top: 1.5rem; }
-            .bg-gray-50 { background-color: #f9fafb; }
-            .bg-yellow-50 { background-color: #fffbeb; }
-            .bg-green-50 { background-color: #f0fdf4; }
-            .bg-blue-100 { background-color: #dbeafe; }
-            .bg-green-100 { background-color: #dcfce7; }
-            .bg-yellow-100 { background-color: #fef3c7; }
-            .border-yellow-200 { border-color: #fde68a; }
-            .border-green-200 { border-color: #bbf7d0; }
-            .overflow-x-auto { overflow-x: auto; }
-            .font-mono { font-family: ui-monospace, SFMono-Regular, monospace; }
+            .flex {
+              display: flex;
+            }
+            .justify-between {
+              justify-content: space-between;
+            }
+            .items-center {
+              align-items: center;
+            }
+            .space-x-4 > * + * {
+              margin-left: 1rem;
+            }
+            .border-b-2 {
+              border-bottom-width: 2px;
+            }
+            .border-gray-200 {
+              border-color: #e5e7eb;
+            }
+            .pb-4 {
+              padding-bottom: 1rem;
+            }
+            .mb-6 {
+              margin-bottom: 1.5rem;
+            }
+            .text-2xl {
+              font-size: 1.5rem;
+            }
+            .text-4xl {
+              font-size: 2.25rem;
+            }
+            .font-bold {
+              font-weight: 700;
+            }
+            .text-gray-900 {
+              color: #111827;
+            }
+            .text-gray-600 {
+              color: #4b5563;
+            }
+            .text-red-600 {
+              color: #dc2626;
+            }
+            .text-right {
+              text-align: right;
+            }
+            .w-16 {
+              width: 4rem;
+            }
+            .h-16 {
+              height: 4rem;
+            }
+            .rounded-lg {
+              border-radius: 0.5rem;
+            }
+            .overflow-hidden {
+              overflow: hidden;
+            }
+            .object-cover {
+              object-fit: cover;
+            }
+            .grid {
+              display: grid;
+            }
+            .grid-cols-2 {
+              grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+            .gap-8 {
+              gap: 2rem;
+            }
+            .bg-gray-50 {
+              background-color: #f9fafb;
+            }
+            .p-4 {
+              padding: 1rem;
+            }
+            .text-lg {
+              font-size: 1.125rem;
+            }
+            .font-semibold {
+              font-weight: 600;
+            }
+            .mb-3 {
+              margin-bottom: 0.75rem;
+            }
+            .space-y-2 > * + * {
+              margin-top: 0.5rem;
+            }
+            .font-medium {
+              font-weight: 500;
+            }
+            .w-64 {
+              width: 16rem;
+            }
+            .border {
+              border-width: 1px;
+            }
+            .border-t {
+              border-top-width: 1px;
+            }
+            .pt-2 {
+              padding-top: 0.5rem;
+            }
+            .mt-2 {
+              margin-top: 0.5rem;
+            }
+            .text-xl {
+              font-size: 1.25rem;
+            }
+            .text-center {
+              text-align: center;
+            }
+            .text-xs {
+              font-size: 0.75rem;
+            }
+            .text-yellow-800 {
+              color: #92400e;
+            }
+            .text-yellow-700 {
+              color: #a16207;
+            }
+            .bg-yellow-50 {
+              background-color: #fffbeb;
+            }
+            .border-yellow-200 {
+              border-color: #fde68a;
+            }
+            .pt-6 {
+              padding-top: 1.5rem;
+            }
+            .mb-2 {
+              margin-bottom: 0.5rem;
+            }
+            .mb-4 {
+              margin-bottom: 1rem;
+            }
           </style>
         </head>
         <body>
