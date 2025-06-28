@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 const AuthForm = () => {
   const [email, setEmail] = useState('');
@@ -14,14 +15,12 @@ const AuthForm = () => {
   const [loading, setLoading] = useState(false);
   const { signIn, signUp } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const getFirebaseErrorMessage = (error: any) => {
     const errorCode = error?.code || '';
     
     switch (errorCode) {
-      case 'auth/network-request-failed':
-        return 'Tidak dapat terhubung ke server. Silakan periksa koneksi internet Anda dan coba lagi. Jika masalah berlanjut, periksa pengaturan firewall atau proxy Anda.';
-      
       case 'auth/invalid-credential':
       case 'auth/wrong-password':
       case 'auth/user-not-found':
@@ -67,7 +66,7 @@ const AuthForm = () => {
           title: "Login Berhasil",
           description: "Selamat datang! Anda berhasil masuk ke akun Anda.",
         });
-        window.location.href = '/';
+        navigate('/');
       }
     } catch (error) {
       console.error('Sign in error:', error);
@@ -106,7 +105,7 @@ const AuthForm = () => {
         setPassword('');
         setFullName('');
         // Redirect to home
-        window.location.href = '/';
+        navigate('/');
       }
     } catch (error) {
       console.error('Sign up error:', error);

@@ -7,7 +7,8 @@ export const useOrders = () => {
     queryKey: ['orders'],
     queryFn: getAllOrders,
     staleTime: 60000, // 1 minute
-    // Removed automatic refetching that was causing reloads
+    refetchInterval: 60000, // Refetch every minute
+    refetchIntervalInBackground: false, // Don't refetch when tab is not active
   });
 };
 
@@ -17,7 +18,8 @@ export const useUserOrders = (userId: string) => {
     queryFn: () => getOrdersByUser(userId),
     enabled: !!userId,
     staleTime: 60000, // 1 minute
-    // Removed automatic refetching that was causing reloads
+    refetchInterval: 60000, // Refetch every minute
+    refetchIntervalInBackground: false, // Don't refetch in background
     retry: 3, // Retry failed requests
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
   });

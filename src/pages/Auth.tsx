@@ -2,17 +2,15 @@ import AuthForm from '@/components/AuthForm';
 import { useAuth } from '@/hooks/useFirebaseAuth';
 import { useEffect } from 'react';
 import { getFirestore, doc, setDoc } from 'firebase/firestore';
-import { useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 
 const Auth = () => {
   const { user } = useAuth();
   const db = getFirestore();
-  const navigate = useNavigate();
   
-  // Redirect to home page if user is logged in
+  // Ensure user profile is created in Firestore
   useEffect(() => {
     if (user) {
-      // Ensure user profile is created in Firestore
       const ensureUserProfile = async () => {
         try {
           const adminEmails = ['admin@gmail.com', 'ari4rich@gmail.com'];
@@ -36,12 +34,14 @@ const Auth = () => {
       };
 
       ensureUserProfile();
-      // Use navigate instead of window.location to prevent full page reload
-      navigate('/', { replace: true });
     }
-  }, [user, db, navigate]);
+  }, [user, db]);
   
-  // Only show auth form if no user
+  // Only show auth form if no user, otherwise redirect to home
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
+  
   return <AuthForm />;
 };
 

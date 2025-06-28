@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
 
 const UserMenu = () => {
   const { user, signOut } = useAuth();
@@ -37,6 +38,7 @@ const UserMenu = () => {
 
   const handleSignOut = async () => {
     await signOut();
+    navigate('/auth');
   };
 
   const handleOrdersClick = () => {
@@ -54,10 +56,10 @@ const UserMenu = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <div className="flex items-center space-x-2 cursor-pointer">
+        <Button variant="ghost" size="sm" className="flex items-center space-x-2">
           <User className="w-4 h-4" />
           <span className="hidden md:inline">{user.email}</span>
-        </div>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>

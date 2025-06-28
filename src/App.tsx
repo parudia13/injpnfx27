@@ -26,15 +26,15 @@ import AdminLogs from '@/pages/admin/AdminLogs';
 import ImportExport from '@/pages/admin/ImportExport';
 import RecycleBin from '@/pages/admin/RecycleBin';
 import ShippingRates from '@/pages/admin/ShippingRates';
-import PaymentVerification from '@/pages/admin/PaymentVerification';
 
 import './App.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
+      staleTime: 60000, // 1 minute
       retry: 1,
+      refetchOnWindowFocus: false,
     },
   },
 });
@@ -65,7 +65,6 @@ function App() {
               <Route path="/admin/products/edit/:id" element={<EditProduct />} />
               <Route path="/admin/orders-history" element={<OrdersHistory />} />
               <Route path="/admin/order-confirmation" element={<OrderConfirmation />} />
-              <Route path="/admin/payment-verification" element={<PaymentVerification />} />
               <Route path="/admin/users" element={<UserManagement />} />
               <Route path="/admin/logs" element={<AdminLogs />} />
               <Route path="/admin/import-export" element={<ImportExport />} />

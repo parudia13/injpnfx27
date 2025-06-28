@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, useMemo } from 'react';
+import { useState, useEffect, createContext, useContext } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
@@ -131,9 +131,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     if (!auth) {
-      setTimeout(() => {
-        window.location.href = '/auth';
-      }, 100);
+      console.error('Firebase auth not initialized for signout');
       return;
     }
 
@@ -141,30 +139,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log('Attempting Firebase sign out');
       await firebaseSignOut(auth);
       console.log('Sign out successful');
-      // Use navigate instead of window.location to prevent full page reload
-      setTimeout(() => {
-        window.location.href = '/auth';
-      }, 100);
     } catch (error) {
       console.error('Firebase sign out error:', error);
-      // Force redirect even if sign out fails
-      setTimeout(() => {
-        window.location.href = '/auth';
-      }, 100);
     }
   };
 
-  // Memoize the context value to prevent unnecessary re-renders
-  const contextValue = useMemo(() => ({
-    user,
-    signIn,
-    signUp,
-    signOut,
-    loading
-  }), [user, loading]);
-
   return (
-    <AuthContext.Provider value={contextValue}>
+    <AuthContext.Provider value={{
+      user,
+      signIn,
+      signUp,
+      signOut,
+      loading
+    }}>
       {children}
     </AuthContext.Provider>
   );

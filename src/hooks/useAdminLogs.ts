@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AdminLog } from '@/types';
 
@@ -23,6 +22,9 @@ export const useAdminLogs = () => {
       // Return mock data instead of Supabase query
       return mockAdminLogs;
     },
+    staleTime: 60000, // 1 minute
+    refetchInterval: 60000, // Refetch every minute
+    refetchIntervalInBackground: false, // Don't refetch when tab is not active
   });
 };
 

@@ -6,6 +6,7 @@ export const usePendingOrders = () => {
     queryKey: ['pending-orders'],
     queryFn: getPendingOrders,
     staleTime: 60000, // 1 minute
-    // Removed automatic refetching that was causing reloads
+    refetchInterval: 60000, // Refetch every minute
+    refetchIntervalInBackground: false, // Don't refetch when tab is not active
   });
 };

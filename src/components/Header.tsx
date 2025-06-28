@@ -50,10 +50,7 @@ const Header = ({ shouldAnimateCart = false }: HeaderProps) => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <div 
-            onClick={() => handleNavClick('/')} 
-            className="flex items-center space-x-2 cursor-pointer"
-          >
+          <div onClick={() => handleNavClick('/')} className="flex items-center space-x-2 cursor-pointer">
             <div className="w-10 h-10 rounded-lg overflow-hidden">
               <img 
                 src="/lovable-uploads/022a8dd4-6c9e-4b02-82a8-703a2cbfb51a.png" 
@@ -111,7 +108,7 @@ const Header = ({ shouldAnimateCart = false }: HeaderProps) => {
             )}
 
             {/* Mobile Menu Button */}
-            <button
+            <div
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="md:hidden p-2 text-gray-700 hover:text-primary transition-colors duration-200"
             >
@@ -126,7 +123,7 @@ const Header = ({ shouldAnimateCart = false }: HeaderProps) => {
                   isMenuOpen ? '-rotate-45 -translate-y-1.5' : 'translate-y-0.5'
                 }`} />
               </div>
-            </button>
+            </div>
           </div>
         </div>
 

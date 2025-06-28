@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { DashboardStats, Product } from '@/types';
 
@@ -19,5 +18,8 @@ export const useAdminStats = () => {
         totalRevenue: 0
       };
     },
+    staleTime: 60000, // 1 minute
+    refetchInterval: 60000, // Refetch every minute
+    refetchIntervalInBackground: false, // Don't refetch when tab is not active
   });
 };
