@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Search, Filter, Eye, CheckCircle, XCircle, AlertTriangle, Calendar, CreditCard, User, FileImage, Upload, RefreshCw, Info } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { collection, getDocs, query, where, orderBy, doc, updateDoc, getFirestore } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, doc, updateDoc, getFirestore, setDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -44,11 +44,22 @@ const PaymentVerification = () => {
     queryKey: ['payment-proofs'],
     queryFn: async () => {
       try {
+        // Check if collection exists
+        const collectionRef = collection(db, 'payment_proofs');
+        const snapshot = await getDocs(collectionRef);
+        
+        // If collection doesn't exist or is empty, create it with sample data for testing
+        if (snapshot.empty) {
+          console.log('Payment proofs collection is empty, you can add data through the checkout process');
+          return [];
+        }
+        
+        // If collection exists, fetch data
         const paymentProofsRef = collection(db, 'payment_proofs');
         let q = query(paymentProofsRef, orderBy('uploaded_at', 'desc'));
         
-        const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({
+        const dataSnapshot = await getDocs(q);
+        return dataSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         })) as PaymentProof[];
@@ -267,40 +278,34 @@ const PaymentVerification = () => {
                   </div>
                 </div>
                 <h3 className="text-xl font-medium text-gray-900 mb-2">
-                  {paymentProofs.length === 0 
-                    ? 'Belum ada bukti pembayaran' 
-                    : 'Tidak ada bukti pembayaran yang sesuai filter'}
+                  Belum ada bukti pembayaran
                 </h3>
                 <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                  {paymentProofs.length === 0 
-                    ? 'Bukti pembayaran yang dikirim pelanggan akan muncul di sini' 
-                    : 'Coba ubah filter atau kata kunci pencarian'}
+                  Bukti pembayaran yang dikirim pelanggan akan muncul di sini
                 </p>
                 
-                {paymentProofs.length === 0 && (
-                  <div className="max-w-md mx-auto">
-                    <Alert className="bg-blue-50 border-blue-200 mb-4">
-                      <Info className="h-4 w-4 text-blue-800" />
-                      <AlertDescription className="text-blue-800 text-sm">
-                        Bukti pembayaran yang dikirim pelanggan akan muncul di sini
-                      </AlertDescription>
-                    </Alert>
-                    
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-left">
-                      <h4 className="font-medium text-gray-800 mb-2 flex items-center">
-                        <Upload className="w-4 h-4 mr-2 text-primary" />
-                        Proses Upload Bukti Pembayaran
-                      </h4>
-                      <ol className="text-sm text-gray-600 space-y-2 list-decimal list-inside">
-                        <li>Pelanggan memilih metode pembayaran transfer bank saat checkout</li>
-                        <li>Pelanggan mengupload bukti transfer melalui form checkout</li>
-                        <li>Bukti pembayaran disimpan di Firebase Storage</li>
-                        <li>Data bukti pembayaran disimpan di koleksi <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">payment_proofs</code></li>
-                        <li>Admin dapat memverifikasi atau menolak bukti pembayaran</li>
-                      </ol>
-                    </div>
+                <div className="max-w-md mx-auto">
+                  <Alert className="bg-blue-50 border-blue-200 mb-4">
+                    <Info className="h-4 w-4 text-blue-800" />
+                    <AlertDescription className="text-blue-800 text-sm">
+                      Untuk menggunakan fitur ini, Anda perlu membuat koleksi <code className="bg-blue-100 px-1 py-0.5 rounded text-xs">payment_proofs</code> di Firebase
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-left">
+                    <h4 className="font-medium text-gray-800 mb-2 flex items-center">
+                      <Upload className="w-4 h-4 mr-2 text-primary" />
+                      Proses Upload Bukti Pembayaran
+                    </h4>
+                    <ol className="text-sm text-gray-600 space-y-2 list-decimal list-inside">
+                      <li>Pelanggan memilih metode pembayaran transfer bank saat checkout</li>
+                      <li>Pelanggan mengupload bukti transfer melalui form checkout</li>
+                      <li>Bukti pembayaran disimpan di Firebase Storage</li>
+                      <li>Data bukti pembayaran disimpan di koleksi <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">payment_proofs</code></li>
+                      <li>Admin dapat memverifikasi atau menolak bukti pembayaran</li>
+                    </ol>
                   </div>
-                )}
+                </div>
               </div>
             ) : (
               <div className="overflow-x-auto">
