@@ -132,7 +132,7 @@ export interface DashboardStats {
   totalRevenue: number;
 }
 
-// Missing Prefecture interface
+// Prefecture interface
 export interface Prefecture {
   name: string;
   name_en: string;

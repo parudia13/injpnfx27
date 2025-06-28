@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useShippingRates, useAddShippingRate, useUpdateShippingRate, useDeleteShippingRate } from '@/hooks/useShippingRates';
 import { toast } from '@/hooks/use-toast';
 import AdminLayout from '@/components/admin/AdminLayout';
@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -22,7 +21,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -35,8 +33,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Truck, Plus, Edit, Trash2, Search } from 'lucide-react';
+import { Truck, Edit, Trash2, Search, RefreshCw } from 'lucide-react';
 import { ShippingRate } from '@/types';
+import { collection, getDocs, setDoc, doc } from 'firebase/firestore';
+import { db } from '@/config/firebase';
 
 // Define the prefectures of Japan
 const japanPrefectures = [
@@ -90,102 +90,99 @@ const japanPrefectures = [
 ];
 
 const ShippingRates = () => {
-  const { data: shippingRates = [], isLoading } = useShippingRates();
-  const addShippingRate = useAddShippingRate();
+  const { data: shippingRates = [], isLoading, refetch } = useShippingRates();
   const updateShippingRate = useUpdateShippingRate();
   const deleteShippingRate = useDeleteShippingRate();
   
   const [searchTerm, setSearchTerm] = useState('');
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedRate, setSelectedRate] = useState<ShippingRate | null>(null);
+  const [isInitializing, setIsInitializing] = useState(false);
   
   const [formData, setFormData] = useState({
-    prefecture_id: '',
-    kanji: '',
-    romaji: '',
     price: '',
     delivery_time: ''
   });
 
-  // Fixed the filtering logic to safely handle properties that might be undefined
+  // Filter rates based on search term
   const filteredRates = shippingRates.filter(rate => {
     const kanjiMatch = rate.kanji && rate.kanji.toLowerCase().includes(searchTerm.toLowerCase());
     const romajiMatch = rate.romaji && rate.romaji.toLowerCase().includes(searchTerm.toLowerCase());
     return kanjiMatch || romajiMatch;
   });
 
-  const getAvailablePrefectures = () => {
-    const usedPrefectureIds = new Set(shippingRates.map(rate => rate.prefecture_id));
-    return japanPrefectures.filter(prefecture => !usedPrefectureIds.has(prefecture.id));
+  // Check if we need to initialize the shipping rates
+  useEffect(() => {
+    const checkAndInitializeRates = async () => {
+      if (!isLoading && shippingRates.length === 0) {
+        const shouldInitialize = window.confirm(
+          "Belum ada data ongkir yang tersedia. Apakah Anda ingin menginisialisasi data ongkir untuk semua prefektur Jepang?"
+        );
+        
+        if (shouldInitialize) {
+          await initializeShippingRates();
+        }
+      }
+    };
+    
+    checkAndInitializeRates();
+  }, [isLoading, shippingRates]);
+
+  // Initialize shipping rates for all prefectures
+  const initializeShippingRates = async () => {
+    try {
+      setIsInitializing(true);
+      
+      // Check if collection exists and has documents
+      const ratesRef = collection(db, 'shipping_rates');
+      const snapshot = await getDocs(ratesRef);
+      
+      if (snapshot.size > 0) {
+        toast({
+          title: "Info",
+          description: "Data ongkir sudah ada di database",
+        });
+        setIsInitializing(false);
+        return;
+      }
+      
+      // Initialize rates for all prefectures
+      const timestamp = new Date().toISOString();
+      
+      for (const prefecture of japanPrefectures) {
+        const docRef = doc(db, 'shipping_rates', prefecture.id);
+        await setDoc(docRef, {
+          prefecture_id: prefecture.id,
+          kanji: prefecture.kanji,
+          romaji: prefecture.romaji,
+          price: 0,
+          delivery_time: "-",
+          created_at: timestamp,
+          updated_at: timestamp
+        });
+      }
+      
+      toast({
+        title: "Berhasil",
+        description: "Data ongkir untuk 47 prefektur berhasil diinisialisasi",
+      });
+      
+      // Refresh the data
+      refetch();
+    } catch (error) {
+      console.error('Error initializing shipping rates:', error);
+      toast({
+        title: "Error",
+        description: "Gagal menginisialisasi data ongkir",
+        variant: "destructive"
+      });
+    } finally {
+      setIsInitializing(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handlePrefectureChange = (prefectureId: string) => {
-    const prefecture = japanPrefectures.find(p => p.id === prefectureId);
-    if (prefecture) {
-      setFormData(prev => ({
-        ...prev,
-        prefecture_id: prefectureId,
-        kanji: prefecture.kanji,
-        romaji: prefecture.romaji
-      }));
-    }
-  };
-
-  const handleAddSubmit = async () => {
-    if (!formData.prefecture_id || !formData.price || !formData.delivery_time) {
-      toast({
-        title: "Error",
-        description: "Semua field wajib diisi",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const price = parseInt(formData.price);
-    if (isNaN(price) || price < 0) {
-      toast({
-        title: "Error",
-        description: "Ongkir harus berupa angka positif",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      await addShippingRate.mutateAsync({
-        prefecture_id: formData.prefecture_id,
-        kanji: formData.kanji,
-        romaji: formData.romaji,
-        price: price,
-        delivery_time: formData.delivery_time
-      });
-
-      toast({
-        title: "Berhasil",
-        description: `Ongkir untuk ${formData.kanji} berhasil ditambahkan`,
-      });
-
-      setIsAddDialogOpen(false);
-      setFormData({
-        prefecture_id: '',
-        kanji: '',
-        romaji: '',
-        price: '',
-        delivery_time: ''
-      });
-    } catch (error) {
-      console.error('Error adding shipping rate:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Gagal menambahkan ongkir",
-        variant: "destructive"
-      });
-    }
   };
 
   const handleEditSubmit = async () => {
@@ -255,9 +252,6 @@ const ShippingRates = () => {
   const handleEditClick = (rate: ShippingRate) => {
     setSelectedRate(rate);
     setFormData({
-      prefecture_id: rate.prefecture_id,
-      kanji: rate.kanji,
-      romaji: rate.romaji,
       price: rate.price.toString(),
       delivery_time: rate.delivery_time
     });
@@ -284,84 +278,22 @@ const ShippingRates = () => {
             </div>
           </div>
           
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-green-600 hover:bg-green-700">
-                <Plus className="w-4 h-4 mr-2" />
-                Tambah Ongkir
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Tambah Ongkos Kirim</DialogTitle>
-                <DialogDescription>
-                  Tambahkan ongkos kirim untuk prefektur yang belum memiliki tarif
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="prefecture">Prefektur</Label>
-                  <Select 
-                    value={formData.prefecture_id} 
-                    onValueChange={handlePrefectureChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih prefektur" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getAvailablePrefectures().map((prefecture) => (
-                        <SelectItem key={prefecture.id} value={prefecture.id}>
-                          {prefecture.kanji} ({prefecture.romaji})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="price">Ongkos Kirim (¥)</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    min="0"
-                    value={formData.price}
-                    onChange={(e) => handleInputChange('price', e.target.value)}
-                    placeholder="Contoh: 1500"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="delivery_time">Estimasi Pengiriman</Label>
-                  <Input
-                    id="delivery_time"
-                    value={formData.delivery_time}
-                    onChange={(e) => handleInputChange('delivery_time', e.target.value)}
-                    placeholder="Contoh: 3-5 hari"
-                  />
-                </div>
-              </div>
-              
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                  Batal
-                </Button>
-                <Button 
-                  onClick={handleAddSubmit}
-                  disabled={addShippingRate.isPending}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  {addShippingRate.isPending ? 'Menyimpan...' : 'Simpan'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <div className="flex space-x-2">
+            <Button 
+              variant="outline" 
+              onClick={initializeShippingRates} 
+              disabled={isInitializing || isLoading}
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${isInitializing ? 'animate-spin' : ''}`} />
+              {isInitializing ? 'Menginisialisasi...' : 'Inisialisasi Data'}
+            </Button>
+          </div>
         </div>
 
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Daftar Ongkos Kirim</CardTitle>
+              <CardTitle>Daftar Ongkos Kirim ({filteredRates.length})</CardTitle>
               <div className="relative w-64">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
@@ -374,10 +306,12 @@ const ShippingRates = () => {
             </div>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
+            {isLoading || isInitializing ? (
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                <span className="ml-2">Memuat data ongkir...</span>
+                <span className="ml-2">
+                  {isInitializing ? 'Menginisialisasi data ongkir...' : 'Memuat data ongkir...'}
+                </span>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -387,7 +321,7 @@ const ShippingRates = () => {
                       <TableHead>Prefektur (Kanji)</TableHead>
                       <TableHead>Prefektur (Romaji)</TableHead>
                       <TableHead>Ongkos Kirim</TableHead>
-                      <TableHead>Estimasi</TableHead>
+                      <TableHead>Estimasi Waktu</TableHead>
                       <TableHead>Terakhir Diperbarui</TableHead>
                       <TableHead className="text-right">Aksi</TableHead>
                     </TableRow>
@@ -479,7 +413,7 @@ const ShippingRates = () => {
                 <Label htmlFor="edit-prefecture">Prefektur</Label>
                 <Input
                   id="edit-prefecture"
-                  value={selectedRate?.kanji || ''}
+                  value={`${selectedRate?.kanji || ''} (${selectedRate?.romaji || ''})`}
                   disabled
                   className="bg-gray-100"
                 />

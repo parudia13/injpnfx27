@@ -1,4 +1,3 @@
-
 import { Prefecture } from '@/types';
 
 export const prefectures: Prefecture[] = [
