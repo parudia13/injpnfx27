@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,12 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Filter, Eye, CheckCircle, XCircle, AlertTriangle, Calendar, CreditCard, User, FileImage, Upload, RefreshCw } from 'lucide-react';
+import { Search, Filter, Eye, CheckCircle, XCircle, AlertTriangle, Calendar, CreditCard, User, FileImage, Upload, RefreshCw, Info } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { collection, getDocs, query, where, orderBy, doc, updateDoc, getFirestore } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface PaymentProof {
   id: string;
@@ -34,6 +35,7 @@ const PaymentVerification = () => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [imageError, setImageError] = useState(false);
   const queryClient = useQueryClient();
   const firestore = getFirestore();
 
@@ -259,8 +261,10 @@ const PaymentVerification = () => {
               </div>
             ) : filteredPaymentProofs.length === 0 ? (
               <div className="text-center py-12">
-                <div className="bg-gray-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <FileImage className="w-12 h-12 text-gray-400" />
+                <div className="flex justify-center mb-6">
+                  <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center">
+                    <FileImage className="w-12 h-12 text-gray-400" />
+                  </div>
                 </div>
                 <h3 className="text-xl font-medium text-gray-900 mb-2">
                   {paymentProofs.length === 0 
@@ -274,17 +278,27 @@ const PaymentVerification = () => {
                 </p>
                 
                 {paymentProofs.length === 0 && (
-                  <div className="max-w-md mx-auto bg-blue-50 p-4 rounded-lg border border-blue-200">
-                    <h4 className="font-medium text-blue-800 mb-2 flex items-center">
-                      <Upload className="w-4 h-4 mr-2" />
-                      Informasi Upload Bukti Pembayaran
-                    </h4>
-                    <p className="text-sm text-blue-700 mb-2">
-                      Pelanggan perlu mengupload bukti pembayaran saat checkout dengan metode transfer bank.
-                    </p>
-                    <p className="text-sm text-blue-700">
-                      Bukti pembayaran yang diupload akan otomatis muncul di halaman ini untuk diverifikasi.
-                    </p>
+                  <div className="max-w-md mx-auto">
+                    <Alert className="bg-blue-50 border-blue-200 mb-4">
+                      <Info className="h-4 w-4 text-blue-800" />
+                      <AlertDescription className="text-blue-800 text-sm">
+                        Bukti pembayaran yang dikirim pelanggan akan muncul di sini
+                      </AlertDescription>
+                    </Alert>
+                    
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-left">
+                      <h4 className="font-medium text-gray-800 mb-2 flex items-center">
+                        <Upload className="w-4 h-4 mr-2 text-primary" />
+                        Proses Upload Bukti Pembayaran
+                      </h4>
+                      <ol className="text-sm text-gray-600 space-y-2 list-decimal list-inside">
+                        <li>Pelanggan memilih metode pembayaran transfer bank saat checkout</li>
+                        <li>Pelanggan mengupload bukti transfer melalui form checkout</li>
+                        <li>Bukti pembayaran disimpan di Firebase Storage</li>
+                        <li>Data bukti pembayaran disimpan di koleksi <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">payment_proofs</code></li>
+                        <li>Admin dapat memverifikasi atau menolak bukti pembayaran</li>
+                      </ol>
+                    </div>
                   </div>
                 )}
               </div>
@@ -342,6 +356,7 @@ const PaymentVerification = () => {
                               onClick={() => {
                                 setSelectedPayment(payment);
                                 setIsDetailModalOpen(true);
+                                setImageError(false);
                               }}
                             >
                               <Eye className="w-4 h-4 mr-1" />
@@ -475,17 +490,32 @@ const PaymentVerification = () => {
                 <div>
                   <h3 className="text-lg font-semibold mb-3">Bukti Pembayaran</h3>
                   <div className="bg-gray-50 p-4 rounded-lg">
-                    <div className="aspect-auto max-h-[400px] overflow-hidden rounded-md border border-gray-200">
-                      <img 
-                        src={selectedPayment.bukti_url} 
-                        alt="Bukti Pembayaran" 
-                        className="w-full h-full object-contain"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = '/placeholder.svg';
-                          (e.target as HTMLImageElement).alt = 'Gambar tidak tersedia';
-                        }}
-                      />
-                    </div>
+                    {imageError ? (
+                      <div className="aspect-auto h-[300px] flex flex-col items-center justify-center border border-gray-200 rounded-md bg-gray-100">
+                        <AlertTriangle className="w-12 h-12 text-yellow-500 mb-2" />
+                        <p className="text-gray-600 text-sm">Gambar tidak dapat dimuat</p>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="mt-2"
+                          onClick={() => setImageError(false)}
+                        >
+                          Coba Lagi
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="aspect-auto max-h-[400px] overflow-hidden rounded-md border border-gray-200">
+                        <img 
+                          src={selectedPayment.bukti_url} 
+                          alt="Bukti Pembayaran" 
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            setImageError(true);
+                            (e.target as HTMLImageElement).src = '/placeholder.svg';
+                          }}
+                        />
+                      </div>
+                    )}
                     <div className="mt-3 flex justify-center">
                       <a 
                         href={selectedPayment.bukti_url} 
