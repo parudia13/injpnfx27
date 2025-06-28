@@ -191,7 +191,7 @@ const ShippingRates = () => {
     setSelectedRate(rate);
     setFormData({
       prefecture: rate.prefecture,
-      rate: rate.rate.toString(),
+      rate: (rate.rate ?? 0).toString(),
       estimated_days: rate.estimated_days
     });
     setIsEditDialogOpen(true);
