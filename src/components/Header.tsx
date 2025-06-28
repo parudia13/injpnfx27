@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LogIn } from 'lucide-react';
@@ -51,7 +50,7 @@ const Header = ({ shouldAnimateCart = false }: HeaderProps) => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <button onClick={() => handleNavClick('/')} className="flex items-center space-x-2 cursor-pointer">
+          <div onClick={() => handleNavClick('/')} className="flex items-center space-x-2 cursor-pointer">
             <div className="w-10 h-10 rounded-lg overflow-hidden">
               <img 
                 src="/lovable-uploads/022a8dd4-6c9e-4b02-82a8-703a2cbfb51a.png" 
@@ -62,12 +61,12 @@ const Header = ({ shouldAnimateCart = false }: HeaderProps) => {
             <div>
               <h1 className="text-xl font-bold text-primary">Injapan Food</h1>
             </div>
-          </button>
+          </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
             {navItems.map((item) => (
-              <button
+              <div
                 key={item.path}
                 onClick={() => handleNavClick(item.path)}
                 className={`font-medium transition-colors duration-200 cursor-pointer ${
@@ -77,7 +76,7 @@ const Header = ({ shouldAnimateCart = false }: HeaderProps) => {
                 }`}
               >
                 {item.label}
-              </button>
+              </div>
             ))}
           </nav>
 
@@ -87,25 +86,25 @@ const Header = ({ shouldAnimateCart = false }: HeaderProps) => {
             <LanguageSwitcher />
 
             {/* Cart */}
-            <button
+            <div
               onClick={() => handleNavClick('/cart')}
               className="relative p-2 text-gray-700 hover:text-primary transition-colors duration-200 cursor-pointer flex items-center space-x-1"
               aria-label="Keranjang Saya"
             >
               <CartIcon onAnimationTrigger={shouldAnimateCart} />
               <span className="hidden sm:inline text-sm font-medium">Keranjang Saya</span>
-            </button>
+            </div>
 
             {/* Auth */}
             {user ? (
               <UserMenu />
             ) : (
-              <button onClick={() => handleNavClick('/auth')}>
+              <div onClick={() => handleNavClick('/auth')}>
                 <Button variant="outline" size="sm" className="flex items-center space-x-2">
                   <LogIn className="w-4 h-4" />
                   <span className="hidden sm:inline">{t('nav.login')}</span>
                 </Button>
-              </button>
+              </div>
             )}
 
             {/* Mobile Menu Button */}
@@ -133,7 +132,7 @@ const Header = ({ shouldAnimateCart = false }: HeaderProps) => {
           <div className="md:hidden py-4 border-t border-gray-200 animate-fade-in">
             <nav className="flex flex-col space-y-4">
               {navItems.map((item) => (
-                <button
+                <div
                   key={item.path}
                   onClick={() => handleNavClick(item.path)}
                   className={`font-medium transition-colors duration-200 text-left cursor-pointer ${
@@ -143,21 +142,21 @@ const Header = ({ shouldAnimateCart = false }: HeaderProps) => {
                   }`}
                 >
                   {item.label}
-                </button>
+                </div>
               ))}
-              <button
+              <div
                 onClick={() => handleNavClick('/cart')}
                 className="text-gray-700 hover:text-primary font-medium text-left cursor-pointer"
               >
                 Keranjang Saya
-              </button>
+              </div>
               {!user && (
-                <button
+                <div
                   onClick={() => handleNavClick('/auth')}
                   className="text-gray-700 hover:text-primary font-medium text-left cursor-pointer"
                 >
                   {t('nav.login')} / {t('nav.register')}
-                </button>
+                </div>
               )}
             </nav>
           </div>

@@ -5,7 +5,7 @@ import OrderConfirmation from '@/components/admin/OrderConfirmation';
 import InvoiceModal from '@/components/InvoiceModal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, Clock, FileText } from 'lucide-react';
+import { AlertCircle, Clock, FileText, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Order } from '@/types';
 import ErrorState from '@/components/ErrorState';
@@ -66,7 +66,7 @@ const OrderConfirmationPage = () => {
             
             <div className="flex items-center space-x-4">
               <Button onClick={handleRefresh} variant="outline" size="sm">
-                <Clock className="w-4 h-4 mr-2" />
+                <RefreshCw className="w-4 h-4 mr-2" />
                 Refresh Data
               </Button>
               <Badge variant="secondary" className="text-sm">
