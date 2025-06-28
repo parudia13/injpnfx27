@@ -108,10 +108,11 @@ const ShippingRates = () => {
     delivery_time: ''
   });
 
+  // Fixed the filtering logic to safely handle properties that might be undefined
   const filteredRates = shippingRates.filter(rate => {
-    const matchesSearch = rate.kanji.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         rate.romaji.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
+    const kanjiMatch = rate.kanji && rate.kanji.toLowerCase().includes(searchTerm.toLowerCase());
+    const romajiMatch = rate.romaji && rate.romaji.toLowerCase().includes(searchTerm.toLowerCase());
+    return kanjiMatch || romajiMatch;
   });
 
   const getAvailablePrefectures = () => {
