@@ -12,6 +12,9 @@ export const useCurrencyConverter = (yenAmount: number, paymentMethod: string) =
   const [error, setError] = useState<string | null>(null);
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
   
+  // Use a ref to track if we're already fetching to prevent multiple simultaneous requests
+  const isFetchingRef = useRef(false);
+  
   // Use localStorage to cache the exchange rate and last fetch time
   const getCachedRate = () => {
     try {
@@ -42,9 +45,6 @@ export const useCurrencyConverter = (yenAmount: number, paymentMethod: string) =
       console.warn('Error caching exchange rate:', e);
     }
   };
-
-  // Use a ref to track if we're already fetching to prevent multiple simultaneous requests
-  const isFetchingRef = useRef(false);
 
   const fetchExchangeRate = async () => {
     // Prevent multiple simultaneous fetches
@@ -124,6 +124,7 @@ export const useCurrencyConverter = (yenAmount: number, paymentMethod: string) =
     }
   };
 
+  // Initial load effect - only runs when payment method changes to Rupiah
   useEffect(() => {
     // Only fetch exchange rate if payment method is bank transfer in Rupiah
     if (paymentMethod === 'Bank Transfer (Rupiah)') {
@@ -145,9 +146,9 @@ export const useCurrencyConverter = (yenAmount: number, paymentMethod: string) =
       setIsLoading(false);
       setError(null);
     }
-  }, [yenAmount, paymentMethod]);
+  }, [paymentMethod]);
 
-  // When yenAmount changes but we already have an exchange rate, just recalculate
+  // Recalculation effect - only runs when yenAmount changes and we already have a rate
   useEffect(() => {
     if (exchangeRate && paymentMethod === 'Bank Transfer (Rupiah)') {
       setConvertedRupiah(Math.round(yenAmount * exchangeRate));
