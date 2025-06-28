@@ -108,7 +108,6 @@ export const createOrder = async (orderData: {
   items: any[];
   total_price: number;
   status?: string;
-  shipping_fee?: number;
 }) => {
   try {
     console.log('Creating order with data:', orderData);
@@ -120,7 +119,6 @@ export const createOrder = async (orderData: {
       items: orderData.items,
       total_price: orderData.total_price,
       status: orderData.status || 'pending',
-      shipping_fee: orderData.shipping_fee || 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     });

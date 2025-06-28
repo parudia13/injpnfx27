@@ -25,7 +25,6 @@ import UserManagement from '@/pages/admin/UserManagement';
 import AdminLogs from '@/pages/admin/AdminLogs';
 import ImportExport from '@/pages/admin/ImportExport';
 import RecycleBin from '@/pages/admin/RecycleBin';
-import ShippingRates from '@/pages/admin/ShippingRates';
 
 import './App.css';
 
@@ -68,7 +67,6 @@ function App() {
               <Route path="/admin/logs" element={<AdminLogs />} />
               <Route path="/admin/import-export" element={<ImportExport />} />
               <Route path="/admin/recycle-bin" element={<RecycleBin />} />
-              <Route path="/admin/shipping-rates" element={<ShippingRates />} />
               
               {/* 404 route */}
               <Route path="*" element={<NotFound />} />

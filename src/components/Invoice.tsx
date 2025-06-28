@@ -80,12 +80,6 @@ const Invoice = ({ order, invoiceNumber }: InvoiceProps) => {
                  order.status}
               </span>
             </div>
-            {order.shipping_estimate && (
-              <div className="flex">
-                <span className="font-medium w-24">Estimasi:</span>
-                <span>{order.shipping_estimate}</span>
-              </div>
-            )}
           </div>
         </div>
 
@@ -165,20 +159,6 @@ const Invoice = ({ order, invoiceNumber }: InvoiceProps) => {
         <div className="w-80">
           <div className="bg-gray-50 p-6 rounded-lg border">
             <div className="space-y-3">
-              <div className="flex justify-between text-lg">
-                <span className="font-medium">Subtotal:</span>
-                <span>{formatPrice(order.total_price - (order.shipping_fee || 0))}</span>
-              </div>
-              <div className="flex justify-between text-sm text-gray-600">
-                <span>Ongkos Kirim:</span>
-                <span>{order.shipping_fee ? formatPrice(order.shipping_fee) : 'Akan dikonfirmasi'}</span>
-              </div>
-              {order.shipping_estimate && (
-                <div className="flex justify-between text-sm text-gray-600">
-                  <span>Estimasi Pengiriman:</span>
-                  <span>{order.shipping_estimate}</span>
-                </div>
-              )}
               <div className="border-t pt-3">
                 <div className="flex justify-between text-xl font-bold text-red-600">
                   <span>Total Belanja:</span>
