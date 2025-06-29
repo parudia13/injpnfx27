@@ -1,10 +1,19 @@
-
 import { Link } from 'react-router-dom';
-import { Instagram } from 'lucide-react';
+import { Instagram, Download } from 'lucide-react';
 import { useLanguage } from '@/hooks/useLanguage';
+import { usePWAInstall } from '@/hooks/usePWAInstall';
 
 const Footer = () => {
   const { t } = useLanguage();
+  const { 
+    isInstallable, 
+    isIOSDevice, 
+    isStandalone,
+    handleInstallClick 
+  } = usePWAInstall();
+
+  // Only show install button if app is installable and not already installed
+  const showInstallButton = (isInstallable || isIOSDevice) && !isStandalone;
 
   const socialMediaLinks = [
     {
@@ -89,6 +98,20 @@ const Footer = () => {
                 <span className="mr-3 text-lg">📧</span>
                 <span>Email: info@injapanfood.com</span>
               </div>
+              
+              {/* PWA Install Button in Footer */}
+              {showInstallButton && (
+                <div 
+                  onClick={handleInstallClick}
+                  className="flex items-center text-gray-300 hover:text-white transition-colors cursor-pointer"
+                >
+                  <span className="mr-3 text-lg">⬇️</span>
+                  <span className="flex items-center">
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Aplikasi
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 

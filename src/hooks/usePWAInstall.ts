@@ -60,6 +60,9 @@ export const usePWAInstall = () => {
     if (!deferredPrompt) {
       if (isIOSDevice) {
         setShowIOSInstructions(true);
+      } else {
+        // For browsers that don't support beforeinstallprompt but can install PWAs
+        alert("Untuk menginstall aplikasi di desktop, klik icon Install/App di address bar browser");
       }
       return;
     }
