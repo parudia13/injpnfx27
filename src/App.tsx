@@ -13,6 +13,7 @@ import Auth from '@/pages/Auth';
 import Orders from '@/pages/Orders';
 import HowToBuy from '@/pages/HowToBuy';
 import NotFound from '@/pages/NotFound';
+import CategoryPage from '@/pages/CategoryPage';
 
 // Admin pages
 import Admin from '@/pages/Admin';
@@ -57,6 +58,12 @@ function App() {
               <Route path="/auth" element={<Auth />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/how-to-buy" element={<HowToBuy />} />
+              
+              {/* Category routes */}
+              <Route path="/kategori/makanan-ringan" element={<CategoryPage category="Makanan Ringan" />} />
+              <Route path="/kategori/bumbu-dapur" element={<CategoryPage category="Bumbu Dapur" />} />
+              <Route path="/kategori/makanan-siap-saji" element={<CategoryPage category="Makanan Siap Saji" />} />
+              <Route path="/kategori/sayur-bahan-segar" element={<CategoryPage category="Sayur & Bahan Segar" />} />
               
               {/* Admin routes */}
               <Route path="/admin" element={<Admin />} />

@@ -101,7 +101,7 @@ const Index = () => {
             {categories.map((category) => (
               <Link
                 key={category}
-                to={`/products?category=${encodeURIComponent(category)}`}
+                to={`/kategori/${category.toLowerCase().replace(/\s+/g, '-').replace(/&/g, 'dan')}`}
                 className="bg-white hover:bg-red-50 hover:border-red-200 p-4 sm:p-6 rounded-xl text-center transition-all duration-200 transform hover:scale-105 border border-gray-100 shadow-sm group"
               >
                 <div className="text-2xl sm:text-3xl mb-2 sm:mb-3 group-hover:scale-110 transition-transform duration-200">

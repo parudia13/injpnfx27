@@ -44,6 +44,14 @@ const Footer = () => {
     }
   ];
 
+  // Category links with their respective paths
+  const categoryLinks = [
+    { name: 'Makanan Ringan', icon: '🍿', path: '/kategori/makanan-ringan' },
+    { name: 'Bumbu Dapur', icon: '🌶️', path: '/kategori/bumbu-dapur' },
+    { name: 'Makanan Siap Saji', icon: '🍜', path: '/kategori/makanan-siap-saji' },
+    { name: 'Sayur & Bahan Segar', icon: '🥬', path: '/kategori/sayur-bahan-segar' }
+  ];
+
   return (
     <footer className="bg-gray-900 text-white">
       <div className="container mx-auto px-4 py-12">
@@ -150,22 +158,14 @@ const Footer = () => {
           <div>
             <h4 className="text-lg font-bold mb-6">Kategori Populer</h4>
             <ul className="space-y-3 text-gray-300">
-              <li className="hover:text-white transition-colors cursor-pointer">
-                <span className="mr-2">🍿</span>
-                Makanan Ringan
-              </li>
-              <li className="hover:text-white transition-colors cursor-pointer">
-                <span className="mr-2">🌶️</span>
-                Bumbu Dapur
-              </li>
-              <li className="hover:text-white transition-colors cursor-pointer">
-                <span className="mr-2">🍜</span>
-                Makanan Siap Saji
-              </li>
-              <li className="hover:text-white transition-colors cursor-pointer">
-                <span className="mr-2">🥬</span>
-                Sayur & Bahan Segar
-              </li>
+              {categoryLinks.map((category) => (
+                <li key={category.path} className="hover:text-white transition-colors">
+                  <Link to={category.path} className="flex items-center group">
+                    <span className="mr-2">{category.icon}</span>
+                    <span className="group-hover:underline">{category.name}</span>
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
